@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Student Analytics</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container centered" style="min-height:90vh;display:flex;align-items:center;justify-content:center">
+      <div class="dashboard-main center-page" style="width:100%;max-width:780px">
+        <div class="attendance-card" style="padding:12px 14px;border-radius:12px;background:var(--surface-alpha);box-shadow:0 6px 14px rgba(0,0,0,0.08)">
+          <div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;margin-bottom:10px">
+            <a href="#" id="back" class="role-button neutral" style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:12px;background:#fff;border:1px solid #ccc;color:#111;text-decoration:none">
+              <span style="font-size:14px">⬅️</span>
+              <span>Back</span>
+            </a>
+            <div id="title" style="font-weight:800;font-size:1.1rem;text-align:center">Analytics</div>
+            <a href="#" aria-hidden="true" tabindex="-1" style="visibility:hidden;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:12px;font-size:12px">← Back</a>
+          </div>
+          <div id="meta" style="margin-bottom:8px;font-size:0.9rem;color:#6b7280;text-align:center"></div>
+          <div class="search-wrap" style="margin-bottom:8px">
+            <div id="toolsRow" style="display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:8px 10px;gap:8px">
+              <div style="font-weight:700;color:#111">Month</div>
+              <select id="monthSelect" style="border:none;background:transparent;font-weight:700;color:#111;outline:none">
+                <option value="">All</option>
+                <option value="0">January</option>
+                <option value="1">February</option>
+                <option value="2">March</option>
+                <option value="3">April</option>
+                <option value="4">May</option>
+                <option value="5">June</option>
+                <option value="6">July</option>
+                <option value="7">August</option>
+                <option value="8">September</option>
+                <option value="9">October</option>
+                <option value="10">November</option>
+                <option value="11">December</option>
+              </select>
+            </div>
+          </div>
+          <div id="content" style="min-height:240px;display:flex;align-items:center;justify-content:center"></div>
+        </div>
+      </div>
+    </main>
+    <nav class="student-nav">
+      <div class="student-nav-inner">
+        <a href="/instructor/dashboard.html" aria-label="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7"/><path d="M5 11v9h14v-9"/></svg>
+        </a>
+        <a href="/instructor/students.html" aria-label="Logs">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </a>
+        <a href="/instructor/reports.html" aria-label="Reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 012-2h10"/><path d="M20 7v12a2 2 0 01-2 2H6"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h6"/></svg>
+        </a>
+        <a href="/instructor/profile.html" aria-label="Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+    <script>
+      function qs(k){ try{ return new URLSearchParams(window.location.search).get(k) || '' }catch{ return '' } }
+      function authHeaders(json){ const u = sessionStorage.getItem('userToken') || localStorage.getItem('userToken') || ''; const h = {}; if (u) h['Authorization'] = 'Bearer '+u; if (json) h['Content-Type'] = 'application/json'; return h; }
+      const id = qs('id');
+      const back = document.getElementById('back');
+      if (back) back.addEventListener('click', function(e){ e.preventDefault(); window.location.href = '/instructor/student-detail.html?id='+encodeURIComponent(id)+'&view=attendance'; });
+      const meta = document.getElementById('meta');
+      const box = document.getElementById('content');
+      const monthSelect = document.getElementById('monthSelect');
+      let selectedMonth = '';
+      let weekOffset = 0;
+      function fmtWhen(ts){ const d=new Date(Number(ts||Date.now())); return d.toLocaleString(); }
+      (async function(){
+        let studentName = id;
+        try {
+          const sr = await fetch('/api/students', { headers: authHeaders() });
+          const sj = await sr.json();
+          const rows = (sr.ok && sj.ok && Array.isArray(sj.data)) ? sj.data : [];
+          const s = rows.find(x => String(x.id_number||x.idNumber||'') === String(id));
+          if (s) studentName = s.name || id;
+        } catch {}
+        meta.textContent = studentName + ' (' + id + ')';
+        try { renderAnalytics(); } catch {}
+        try { setTimeout(function(){ renderAnalytics(); }, 150); } catch {}
+        let attAll = [];
+        try {
+          const attRes = await fetch('/api/instructor/students/activity', { headers: authHeaders(), cache: 'no-store' });
+          const attJ = await attRes.json().catch(()=>({}));
+          attAll = attRes.ok && attJ.ok ? (Array.isArray(attJ.data) ? attJ.data : []) : [];
+        } catch {}
+        try {
+          window.__attRows = attAll.filter(x => {
+            const sid = String(x.idNumber||x.id_number||x.idnumber||x.studentId||x.student_id||'');
+            return sid === String(id);
+          }).sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
+        } catch { window.__attRows = []; }
+        renderAnalytics();
+      })();
+      try { setTimeout(function(){ renderAnalytics(); }, 400); } catch {}
+      function renderAnalytics(){
+        try {
+        const attRows = window.__attRows || [];
+        const rowsSorted = attRows.slice().sort((a,b)=>Number(a.ts||0)-Number(b.ts||0));
+        const dayMs = 24*60*60*1000;
+        const totals = new Map();
+        function addDur(start, end){
+          let s = Number(start||0), e = Number(end||0);
+          if (!(e>s)) return;
+          while (s < e) {
+            const dayStart = new Date(s); dayStart.setHours(0,0,0,0);
+            const next = dayStart.getTime() + dayMs;
+            const chunkEnd = Math.min(e, next);
+            const key = dayStart.getTime();
+            totals.set(key, (totals.get(key)||0) + (chunkEnd - s));
+            s = chunkEnd;
+          }
+        }
+        let open = null;
+        for (const r of rowsSorted){ const t=String(r.type||''); const ts0 = Number(Date.parse(String(r.approvedat||r.approvedAt||''))||0); const ts = ts0 || Number(r.ts||0); if (t==='in') { open = ts; } else if (t==='out' && open!==null) { if (ts>open) addDur(open, ts); open=null; } }
+        if (open!==null) { addDur(open, Date.now()); open=null; }
+        const today = new Date(); today.setHours(0,0,0,0);
+        const sel = String(selectedMonth||'').trim();
+        let baseWeekStart;
+        if (sel) {
+          let refYear = today.getFullYear();
+          function getRowDate(r){ const ts0=Number(Date.parse(String(r.approvedat||r.approvedAt||''))||0); const ts=ts0||Number(r.ts||Date.now()); return new Date(ts); }
+          const hit = rowsSorted.find(r => getRowDate(r).getMonth()===Number(sel));
+          if (hit) { refYear = getRowDate(hit).getFullYear(); }
+          const monthStart = new Date(refYear, Number(sel), 1); monthStart.setHours(0,0,0,0);
+          baseWeekStart = monthStart;
+        } else {
+          baseWeekStart = new Date(today); baseWeekStart.setDate(today.getDate() - today.getDay());
+        }
+        let weekStart = new Date(baseWeekStart); weekStart.setDate(weekStart.getDate() + (Number(weekOffset||0)*7)); weekStart.setHours(0,0,0,0);
+        if (sel) {
+          const refYear = weekStart.getFullYear();
+          const monthStart = new Date(refYear, Number(sel), 1); monthStart.setHours(0,0,0,0);
+          const monthEnd = new Date(refYear, Number(sel)+1, 0); monthEnd.setHours(0,0,0,0);
+          const candidate = new Date(monthStart); candidate.setDate(monthStart.getDate() + (Number(weekOffset||0)*7)); candidate.setHours(0,0,0,0);
+          if (candidate.getMonth() !== Number(sel)) { weekOffset = 0; weekStart = new Date(monthStart); }
+          else { weekStart = candidate; }
+        }
+        const days = []; for(let i=0;i<7;i++){ const d=new Date(weekStart); d.setDate(weekStart.getDate()+i); d.setHours(0,0,0,0); days.push(d.getTime()); }
+        const wrap = document.createElement('div'); wrap.style.display='flex'; wrap.style.flexDirection='column'; wrap.style.gap='8px'; wrap.style.width='100%'; wrap.style.margin='0 auto'; wrap.style.alignSelf='center'; wrap.style.background='var(--surface-alpha)'; wrap.style.borderRadius='12px'; wrap.style.boxShadow='0 6px 14px rgba(0,0,0,0.08)'; wrap.style.padding='12px';
+        const head = document.createElement('div'); head.style.display='grid'; head.style.gridTemplateColumns='auto 1fr auto'; head.style.alignItems='center';
+        const prevBtn = document.createElement('button'); prevBtn.type='button'; prevBtn.textContent='‹'; prevBtn.style.padding='6px 10px'; prevBtn.style.border='1px solid #e5e7eb'; prevBtn.style.borderRadius='10px'; prevBtn.style.background='#fff'; prevBtn.style.fontWeight='700';
+        const title = document.createElement('div'); title.style.fontWeight='800'; title.style.textAlign='center';
+        const titleTop = document.createElement('div'); titleTop.textContent = 'Accumulated Hours (max 8h/day)';
+        function fmtTotal(ms){ const h=Math.floor(ms/3600000); const m=Math.floor((ms%3600000)/60000); return (h? h+'h ' : '') + (m? m+'m' : (h? '' : '0m')); }
+        let weekTotal = 0; days.forEach(k=>{ weekTotal += (totals.get(k)||0); });
+        const totalEl = document.createElement('div'); totalEl.style.fontWeight='800'; totalEl.style.textAlign='center'; totalEl.textContent = fmtTotal(weekTotal);
+        const s = new Date(weekStart); const e = new Date(weekStart); e.setDate(e.getDate()+6);
+        const sameMonth = s.getMonth()===e.getMonth() && s.getFullYear()===e.getFullYear();
+        const rangeTxt = sameMonth ? s.toLocaleDateString('en-US',{ month:'long', day:'numeric' }) + ' – ' + e.getDate() : s.toLocaleDateString('en-US',{ month:'short', day:'numeric' }) + ' – ' + e.toLocaleDateString('en-US',{ month:'short', day:'numeric' });
+        const rangeEl = document.createElement('div'); rangeEl.style.fontSize='12px'; rangeEl.style.color='#6b7280'; rangeEl.style.textAlign='center'; rangeEl.textContent = 'Week: ' + rangeTxt;
+        title.appendChild(titleTop);
+        title.appendChild(rangeEl);
+        const nextBtn = document.createElement('button'); nextBtn.type='button'; nextBtn.textContent='›'; nextBtn.style.padding='6px 10px'; nextBtn.style.border='1px solid #e5e7eb'; nextBtn.style.borderRadius='10px'; nextBtn.style.background='#fff'; nextBtn.style.fontWeight='700';
+        head.appendChild(prevBtn); head.appendChild(title); head.appendChild(nextBtn);
+        const chart = document.createElement('div'); chart.style.width='100%'; chart.style.display='flex'; chart.style.flexDirection='column'; chart.style.gap='6px'; chart.style.padding='8px'; chart.style.boxSizing='border-box'; chart.style.overflow='visible';
+        function fmtVal(ms){ const h=Math.floor(ms/3600000); const m=Math.floor((ms%3600000)/60000); return h?`${h}h`:(m?`${m}m`:'0'); }
+        const capMs = 8 * 3600000;
+        days.forEach(k=>{
+          const val = totals.get(k)||0;
+          const row = document.createElement('div'); row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px'; row.style.width='100%';
+          const d = new Date(k);
+          const lab = document.createElement('div'); lab.style.fontSize='0.8rem'; lab.style.color='#6b7280'; lab.style.width='56px'; lab.style.flex='0 0 56px'; lab.textContent = d.toLocaleDateString('en-US',{ weekday:'short' });
+          const ratio = Math.min(val, capMs) / capMs;
+          const bar = document.createElement('div'); bar.style.height='16px'; bar.style.border='1.5px solid rgba(249,115,22,0.5)'; bar.style.background='#f97316'; bar.style.borderRadius='999px'; bar.style.width = Math.max(2, Math.round(ratio * 100)) + '%';
+          const valLabel = document.createElement('div'); valLabel.style.fontSize='0.7rem'; valLabel.style.color='#6b7280'; valLabel.style.marginLeft='6px'; valLabel.textContent = (val>capMs? '8h+' : fmtVal(val));
+          const barWrap = document.createElement('div'); barWrap.style.flex='1'; barWrap.style.display='flex'; barWrap.style.alignItems='center';
+          barWrap.appendChild(bar);
+          row.appendChild(lab);
+          row.appendChild(barWrap);
+          row.appendChild(valLabel);
+          chart.appendChild(row);
+        });
+        box.innerHTML = '';
+        box.appendChild(wrap);
+        wrap.appendChild(head);
+        wrap.appendChild(chart);
+        prevBtn.addEventListener('click', function(){ weekOffset = Math.max(0, Number(weekOffset||0)-1); renderAnalytics(); });
+        nextBtn.addEventListener('click', function(){ weekOffset = Number(weekOffset||0)+1; renderAnalytics(); });
+        } catch (e) {
+          box.innerHTML = '<div>Error loading analytics</div>';
+        }
+      }
+      if (monthSelect) monthSelect.addEventListener('change', function(){ selectedMonth = String(this.value||''); weekOffset = 0; renderAnalytics(); });
+      try { renderAnalytics(); } catch {}
+    </script>
+  </body>
+</html>

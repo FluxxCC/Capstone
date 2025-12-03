@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack — Super Admin Login</title>
+    <meta name="theme-color" content="#111827" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css" />
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <form id="fallback-login" class="form" style="width:min(92vw,560px); margin:0 auto; text-align:center">
+      <input class="input" type="text" name="username" placeholder="Username or Email" required autocomplete="username" />
+      <input class="input" type="password" name="password" placeholder="Password" required autocomplete="current-password" />
+      <button class="role-button" type="submit">Login</button>
+      <p id="fallback-error" style="color:#b91c1c;font-weight:600;margin:0"></p>
+    </form>
+    <script>
+      (function(){
+        function bindFallback(){
+          var form = document.getElementById('fallback-login');
+          var err = document.getElementById('fallback-error');
+          if(!form) return;
+          form.addEventListener('submit', async function(e){
+            e.preventDefault();
+            var u = (form.username && form.username.value || '').trim();
+            var p = (form.password && form.password.value || '').trim();
+            try{
+              var resp = await fetch('/admin/login', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ username:u, password:p }) });
+              var data = await resp.json().catch(function(){ return { ok:false, error:'Invalid JSON' }; });
+              if(resp.ok && data && data.ok){
+                try {
+                  sessionStorage.setItem('superAdminAuth','true');
+                  if (data.token) sessionStorage.setItem('userToken', data.token);
+                  if (data.role) sessionStorage.setItem('role', data.role);
+                } catch {}
+                var path = (data.redirect || '/admin/dashboard');
+                if (typeof path === 'string' && path.length && path[0] !== '/') path = '/' + path;
+                window.location.href = path;
+              } else {
+                err.textContent = (data && (data.message || data.error)) || 'Invalid credentials';
+              }
+            } catch(ex){
+              err.textContent = 'Network error';
+            }
+          });
+        }
+        if(!window.React || !window.ReactDOM){
+          var f = document.getElementById('fallback-login');
+          if (f) { f.style.display='block'; bindFallback(); }
+        }
+      })();
+    </script>
+    <script>
+      function AdminLogin() {
+        const [error, setError] = React.useState('');
+
+        async function handleSubmit(e) {
+          e.preventDefault();
+          const form = e.currentTarget;
+          const username = (form.username?.value || '').trim();
+          const password = (form.password?.value || '').trim();
+          try {
+            const resp = await fetch('/admin/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username, password })
+            });
+            const data = await resp.json();
+            if (resp.ok && data.ok) {
+              sessionStorage.setItem('superAdminAuth', 'true');
+              try {
+                if (data.token) sessionStorage.setItem('userToken', data.token);
+                if (data.role) sessionStorage.setItem('role', data.role);
+              } catch {}
+              let path = data.redirect || '/admin/dashboard';
+              if (typeof path === 'string' && path.length && path[0] !== '/') path = '/' + path;
+              window.location.href = path;
+            } else {
+              setError(data.message || 'Invalid credentials');
+            }
+          } catch (err) {
+            setError('Network error');
+          }
+        }
+
+        return React.createElement(
+          'main',
+          { className: 'container centered' },
+          [
+            React.createElement('h1', { key: 'title', className: 'title' }, 'OJTonTrack'),
+            React.createElement('p', { key: 'subtitle', className: 'subtitle' }, 'Super Admin Login'),
+            React.createElement(
+              'form',
+              { key: 'form', className: 'form', onSubmit: handleSubmit },
+              [
+                React.createElement('input', {
+                  key: 'username',
+                  className: 'input',
+                  type: 'text',
+                  name: 'username',
+                  placeholder: 'Username or Email',
+                  required: true,
+                  autoComplete: 'username',
+                }),
+                React.createElement('input', {
+                  key: 'password',
+                  className: 'input',
+                  type: 'password',
+                  name: 'password',
+                  placeholder: 'Password',
+                  required: true,
+                  autoComplete: 'current-password',
+                }),
+                React.createElement('button', { key: 'login', className: 'role-button', type: 'submit' }, 'Login'),
+                error ? React.createElement('p', { key: 'error', style: { color: '#b91c1c', fontWeight: 600, margin: 0 } }, error) : null,
+              ]
+            ),
+          ]
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(AdminLogin));
+    </script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function(){
+          navigator.serviceWorker.register('/service-worker.js').catch(function(){});
+        });
+      }
+    </script>
+  </body>
+  </html>

@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Instructor — Students (Reports)</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container centered">
+      <div class="dashboard-main center-page">
+        <div class="attendance-card" style="margin-top:0.75rem">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:flex-start;font-size:18px;font-weight:700;margin-bottom:8px">
+            <a href="/instructor/reports.html" style="font-size:12px;padding:6px 10px;border:1px solid #ccc;border-radius:999px;color:#111;text-decoration:none;background:#fff;display:inline-flex;align-items:center;gap:6px">⬅️ <span>Back</span></a>
+            <span style="opacity:0.5">|</span>
+            <div>STUDENTS</div>
+          </div>
+          <div class="search-wrap" style="margin-bottom:12px">
+            <div style="position:relative">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;opacity:0.75">🔍</span>
+              <input id="searchInput" class="input" type="text" placeholder="Search by name or ID" style="width:100%;padding-left:32px;border:1px solid #ccc" />
+            </div>
+          </div>
+          <div style="height:1px;background:#e5e7eb;margin:0 0 8px"></div>
+          <div id="studentsList" class="recent-scroll small" style="max-height:60vh;overflow-y:auto"><div>Loading…</div></div>
+        </div>
+      </div>
+    </main>
+    <nav class="student-nav">
+      <div class="student-nav-inner">
+        <a href="/instructor/dashboard.html" aria-label="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7"/><path d="M5 11v9h14v-9"/></svg>
+        </a>
+        <a href="/instructor/students.html" aria-label="Logs">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </a>
+        <a href="/instructor/reports.html" class="active" aria-label="Reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 012-2h10"/><path d="M20 7v12a2 2 0 01-2 2H6"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h6"/></svg>
+        </a>
+        <a href="/instructor/profile.html" aria-label="Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+    <script>
+      function authHeaders(json){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      document.addEventListener('DOMContentLoaded', async function(){
+        const list = document.getElementById('studentsList');
+        const search = document.getElementById('searchInput');
+        let meSection = null;
+        let rows = [];
+        list.innerHTML = '<div class="skeleton-card"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line" style="width:40%;margin-top:8px"></div></div>';
+        try {
+          const meR = await fetch('/api/me', { headers: authHeaders() });
+          const meJ = await meR.json();
+          if (!(meR.ok && meJ.ok)) { window.location.replace('/index.html'); return; }
+          meSection = String(meJ.data?.section || '').trim();
+          const r = await fetch('/api/students', { headers: authHeaders() });
+          const j = await r.json();
+          rows = (r.ok && j.ok && Array.isArray(j.data)) ? j.data : [];
+          if (meSection) rows = rows.filter(x => String(x.section || '').trim() === meSection);
+          rows.sort((a,b)=>String(a.name||a.id_number||a.idNumber||'').localeCompare(String(b.name||b.id_number||b.idNumber||'')));
+        } catch { list.innerHTML = '<div>No students found</div>'; return; }
+
+        function render(){
+          const q = String(search.value || '').toLowerCase();
+          const filtered = rows.filter(x => String(x.name||x.id_number||x.idNumber||'').toLowerCase().includes(q));
+          if (filtered.length) {
+            list.innerHTML = '';
+            filtered.forEach(s => {
+              const id = s.idNumber || s.id_number || '';
+              const name = s.name || id;
+              const wrap = document.createElement('div');
+              wrap.className = 'list-card';
+              wrap.style.padding = '14px 16px';
+              wrap.style.border = '1px solid #e5e7eb';
+              wrap.style.borderRadius = '14px';
+              wrap.style.boxShadow = '0 6px 14px rgba(0,0,0,0.08)';
+              wrap.style.textAlign = 'left';
+              wrap.style.margin = '8px 0';
+              const title = document.createElement('div');
+              title.className = 'title';
+              title.style.fontWeight = '800';
+              title.style.fontSize = '1rem';
+              title.textContent = String(name);
+              const idLine = document.createElement('div');
+              idLine.style.fontWeight = '600';
+              idLine.style.opacity = '0.8';
+              idLine.style.marginTop = '2px';
+              idLine.textContent = String(id);
+              const meta = document.createElement('div');
+              meta.className = 'meta';
+              meta.style.marginTop = '2px';
+              meta.style.fontSize = '0.9rem';
+              meta.style.opacity = '0.75';
+              meta.textContent = `Section ${s.section || '—'}`;
+              const buttons = document.createElement('div');
+              buttons.className = 'actions';
+              buttons.style.display = 'grid';
+              buttons.style.gridTemplateColumns = '1fr';
+              buttons.style.justifyItems = 'center';
+              buttons.style.marginTop = '10px';
+              const a = document.createElement('a');
+              a.className = 'role-button neutral';
+              a.href = `/instructor/view-reports.html?id=${encodeURIComponent(id)}`;
+              a.textContent = 'View Reports';
+              a.style.width = 'auto';
+              a.style.padding = '8px 12px';
+              a.style.borderRadius = '999px';
+              a.style.fontSize = '12px';
+              a.style.display = 'inline-flex';
+              a.style.alignItems = 'center';
+              a.style.gap = '6px';
+              a.style.border = '1px solid #d1d5db';
+              a.style.background = '#fff';
+              a.style.color = '#111';
+              a.innerHTML = '📄 <span>View Reports</span>';
+              buttons.appendChild(a);
+              wrap.appendChild(title);
+              wrap.appendChild(idLine);
+              wrap.appendChild(meta);
+              wrap.appendChild(buttons);
+              list.appendChild(wrap);
+            });
+          } else {
+            list.innerHTML = '<div class="empty">No students found</div>';
+          }
+        }
+        search.addEventListener('input', render);
+        render();
+      });
+    </script>
+    <script>
+      (function(){
+        const nav = document.querySelector('.student-nav'); if (!nav) return; nav.classList.add('slideable');
+        let startY=null, lastY=null, moved=0;
+        function start(e){ const t=e.touches?e.touches[0]:e; startY=t.clientY; lastY=startY; moved=0; }
+        function move(e){ const t=e.touches?e.touches[0]:e; lastY=t.clientY; moved=lastY-startY; }
+        function end(){ if (moved>30) { document.body.classList.add('nav-hidden'); } else if (moved<-30) { document.body.classList.remove('nav-hidden'); } else { document.body.classList.toggle('nav-hidden'); } startY=null; lastY=null; moved=0; }
+        nav.addEventListener('touchstart', start, { passive:true });
+        nav.addEventListener('touchmove', move, { passive:true });
+        nav.addEventListener('touchend', end);
+        nav.addEventListener('mousedown', start);
+        nav.addEventListener('mousemove', function(e){ if (startY!==null) move(e); });
+        nav.addEventListener('mouseup', end);
+      })();
+    </script>
+  </body>
+</html>

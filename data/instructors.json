@@ -1,0 +1,30 @@
+[
+  {
+    "idNumber": "12222",
+    "password": "password123",
+    "name": "ryuu",
+    "course": "BSIT",
+    "section": "4C"
+  },
+  {
+    "idNumber": "12345",
+    "password": "password123",
+    "name": "Separation Anxiety",
+    "course": "BSIT",
+    "section": "4A"
+  },
+  {
+    "idNumber": "221-0510",
+    "password": "password123",
+    "name": "fefe",
+    "course": "BSCS",
+    "section": "4A"
+  },
+  {
+    "idNumber": "758585",
+    "password": "password123",
+    "name": "Nakow",
+    "course": "BSIT",
+    "section": "4A"
+  }
+]

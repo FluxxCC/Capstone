@@ -1,0 +1,333 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Instructor — Students</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container centered">
+      <div class="dashboard-main center-page">
+        <div class="attendance-card" style="margin-top:0.5rem">
+          <div style="display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:12px;font-size:18px;font-weight:700">
+            <a href="/instructor/students-select.html" style="position:absolute;left:0;font-size:12px;padding:6px 10px;border:1px solid #ccc;border-radius:999px;color:#111;text-decoration:none;background:#fff;display:inline-flex;align-items:center;gap:6px">⬅️ <span>Back</span></a>
+            <div style="text-align:center;width:100%">Students</div>
+          </div>
+          <div class="search-wrap" style="width:100%;margin:0 0 8px 0;padding:0 12px;box-sizing:border-box">
+            <input id="searchInput" class="input" type="text" placeholder="Search student name or ID…" style="width:100%;padding-left:12px;border:1px solid #ccc" />
+          </div>
+          <div id="studentsList" class="recent-scroll small" style="max-height:60vh;overflow-y:auto;text-align:center"><div>Loading…</div></div>
+        </div>
+      </div>
+    </main>
+    <nav class="student-nav">
+      <div class="student-nav-inner">
+        <a href="/instructor/dashboard.html" class="active" aria-label="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7"/><path d="M5 11v9h14v-9"/></svg>
+        </a>
+        <a href="/instructor/students-list.html" aria-label="Logs">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </a>
+        <a href="/instructor/reports.html" aria-label="Reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 012-2h10"/><path d="M20 7v12a2 2 0 01-2 2H6"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h6"/></svg>
+        </a>
+        <a href="/profile.html" aria-label="Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+    <script>
+      function authHeaders(json){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      async function apiFetch(p, opts){
+        const o = { credentials: 'include', mode: 'cors', redirect: 'follow', cache: 'no-store', ...(opts || {}) };
+        let firstErr = null;
+        try {
+          const r = await fetch(p, o);
+          try { window.__lastApiCall = { url: new URL(p, window.location.origin).toString(), status: r.status }; } catch {}
+          return r;
+        } catch (e) {
+          firstErr = e;
+        }
+        try {
+          const url = new URL(p, window.location.origin);
+          url.port = '3000';
+          const r = await fetch(url.toString(), o);
+          try { window.__lastApiCall = { url: url.toString(), status: r.status }; } catch {}
+          return r;
+        } catch (e2) {
+          try {
+            const url = new URL(p, window.location.origin);
+            url.port = '3000';
+            window.__lastApiCall = { url: url.toString(), error: String(e2.message || e2) };
+          } catch {}
+          throw firstErr || e2;
+        }
+      }
+      document.addEventListener('DOMContentLoaded', async function(){
+        const list = document.getElementById('studentsList');
+        const search = document.getElementById('searchInput');
+        let meSection = null;
+        let meSections = [];
+        let selectedCourse = '';
+        let selectedSection = '';
+        let rows = [];
+        let supMap = {};
+        list.innerHTML = '<div class="skeleton-card"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line" style="width:40%;margin-top:8px"></div></div>';
+        try {
+          const meR = await apiFetch('/api/me', { headers: authHeaders() });
+          const meJ = await meR.json();
+          if (!(meR.ok && meJ.ok)) { window.location.replace('/index.html'); return; }
+          meSection = String(meJ.data?.section || '').trim();
+          meSections = Array.isArray(meJ.data?.sections) ? meJ.data.sections.map(String) : [];
+          try {
+            const params = new URLSearchParams(window.location.search);
+            selectedCourse = String(params.get('course')||'').trim();
+            selectedSection = String(params.get('section')||'').trim();
+          } catch {}
+          const r = await apiFetch('/api/students', { headers: authHeaders() });
+          const j = await r.json();
+          rows = (r.ok && j.ok && Array.isArray(j.data)) ? j.data : [];
+          if (selectedCourse || selectedSection) {
+            const cSel = String(selectedCourse||'').trim().toUpperCase();
+            const sSel = String(selectedSection||'').trim().toUpperCase();
+            rows = rows.filter(x => {
+              const c = String(x.course || x.course_code || x.courseCode || x.coursecode || '').trim().toUpperCase();
+              const s = String(x.section || x.section_code || x.sectionCode || '').trim().toUpperCase();
+              if (cSel && c !== cSel) return false;
+              if (sSel && s !== sSel) return false;
+              return true;
+            });
+          } else if (Array.isArray(meSections) && meSections.length) {
+            const normalized = meSections.map(v => String(v||'').trim().toUpperCase()).filter(Boolean);
+            const pairs = normalized.map(v => { if (v.includes('-')) { const [c,s] = v.split('-'); return { c, s }; } return { c: String(meJ.data?.course||'').trim().toUpperCase(), s: v }; });
+            rows = rows.filter(x => {
+              const c = String(x.course || x.course_code || x.courseCode || x.coursecode || '').trim().toUpperCase();
+              const s = String(x.section || x.section_code || x.sectionCode || '').trim().toUpperCase();
+              return pairs.some(p => (!!p.c ? c===p.c : true) && (!!p.s ? s===p.s : true));
+            });
+          } else if (meSection) {
+            const mS = String(meSection||'').trim().toUpperCase();
+            const mC = String(meJ.data?.course||'').trim().toUpperCase();
+            rows = rows.filter(x => {
+              const c = String(x.course || x.course_code || x.courseCode || x.coursecode || '').trim().toUpperCase();
+              const s = String(x.section || x.section_code || x.sectionCode || '').trim().toUpperCase();
+              return (!mC || c===mC) && s===mS;
+            });
+          }
+          rows.sort((a,b)=>String(a.name||a.id_number||a.idNumber||'').localeCompare(String(b.name||b.id_number||b.idNumber||'')));
+          try {
+            const sr = await apiFetch('/api/supervisors', { headers: authHeaders() });
+            const sj = await sr.json().catch(()=>({}));
+            const supRows = sr.ok && sj.ok && Array.isArray(sj.data) ? sj.data : [];
+            const m = {};
+            for (const s of supRows) { const id = s.idNumber || s.idnumber || s.id || ''; if (id) m[id] = s.name || id; }
+            supMap = m; window.supMap = m;
+          } catch {}
+        } catch { list.innerHTML = '<div>No students found</div>'; return; }
+
+        function fmtHMS(h){ var ms=Math.max(0, Math.round(Number(h||0)*3600000)); var hh=Math.floor(ms/3600000); var mm=Math.floor((ms%3600000)/60000); var ss=Math.floor((ms%60000)/1000); return hh+'h '+mm+'m '+ss+'s'; }
+        async function getHoursLocal(id){ try { const r = await apiFetch('/api/student/'+encodeURIComponent(id)+'/hours', { headers: authHeaders(), cache:'no-store' }); const j = await r.json().catch(()=>({})); return r.ok && j.ok ? Number(j.hours || 0) : 0; } catch { return 0; } }
+
+        function render(){
+          const q = String(search.value || '').trim().toLowerCase();
+          const filtered = rows.filter(function(x){
+            if (!q) return true;
+            const id = String(x.idNumber||x.id_number||'').toLowerCase();
+            const name = String(x.name||'').toLowerCase();
+            return name.includes(q) || id.includes(q);
+          });
+          if (filtered.length) {
+            list.innerHTML = '';
+            filtered.forEach(s => {
+              const id = s.idNumber || s.id_number || '';
+              const name = s.name || id;
+              const wrap = document.createElement('div');
+              wrap.className = 'list-card';
+              wrap.style.padding = '12px';
+              wrap.style.borderRadius = '16px';
+              wrap.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)';
+              wrap.style.cursor = 'pointer';
+              wrap.addEventListener('click', function(){
+                var c = String(selectedCourse||'');
+                var s = String(selectedSection||'');
+                var url = '/instructor/student-detail.html?id='+encodeURIComponent(id)+'&view=attendance';
+                if (c) url += '&course='+encodeURIComponent(c);
+                if (s) url += '&section='+encodeURIComponent(s);
+                window.location.href = url;
+              });
+              const rowTop = document.createElement('div');
+              rowTop.style.display = 'grid';
+              rowTop.style.gridTemplateColumns = '1fr';
+              rowTop.style.alignItems = 'center';
+              rowTop.style.justifyItems = 'center';
+              rowTop.style.textAlign = 'center';
+              rowTop.style.gap = '10px';
+              rowTop.style.position = 'relative';
+              const avatar = document.createElement('div');
+              avatar.textContent = '🧑‍🎓';
+              avatar.style.fontSize = '28px';
+              avatar.style.margin = '0 auto';
+              const text = document.createElement('div');
+              const title = document.createElement('div');
+              title.className = 'title';
+              title.textContent = name;
+              title.style.textAlign = 'center';
+              const meta = document.createElement('div');
+              meta.className = 'meta';
+              meta.textContent = `${id} • Section ${s.section || '—'}`;
+              meta.style.textAlign = 'center';
+              const hours = document.createElement('div');
+              hours.className = 'meta';
+              hours.style.textAlign = 'center';
+              hours.textContent = 'Accumulated Hours: …';
+              const indicator = document.createElement('span');
+              indicator.style.width = '12px';
+              indicator.style.height = '12px';
+              indicator.style.borderRadius = '9999px';
+              indicator.style.display = 'inline-block';
+              indicator.style.background = '#ef4444';
+              indicator.style.border = '1px solid #e5e7eb';
+              indicator.style.position = 'absolute';
+              indicator.style.right = '12px';
+              indicator.style.top = '50%';
+              indicator.style.transform = 'translateY(-50%)';
+              text.appendChild(title);
+              text.appendChild(meta);
+              text.appendChild(hours);
+              rowTop.appendChild(avatar);
+              rowTop.appendChild(text);
+              rowTop.appendChild(indicator);
+              wrap.appendChild(rowTop);
+              list.appendChild(wrap);
+              (async function(){
+                try {
+                  const r = await apiFetch('/api/student/'+encodeURIComponent(id)+'/hours', { headers: authHeaders(), cache:'no-store' });
+                  const j = await r.json().catch(()=>({}));
+                  const h = r.ok && j.ok ? Number(j.hours || 0) : 0;
+                  const data = r.ok && j.ok ? (j.data || null) : null;
+                  if (data && typeof data.milliseconds === 'number') {
+                    function fmt(ms){ const sec=Math.max(0, Math.ceil(ms/1000)); const h=Math.floor(sec/3600); const m=Math.floor((sec%3600)/60); const s=Math.max(0, sec%60); return h+'h '+m+'m '+s+'s'; }
+                    hours.textContent = 'Accumulated Hours: ' + String(fmt(Number(data.milliseconds||0)));
+                    const key = String(id);
+                    try {
+                      window.__instTimers = window.__instTimers || new Map();
+                      if (window.__instTimers.has(key)) { clearInterval(window.__instTimers.get(key)); window.__instTimers.delete(key); }
+                    } catch {}
+                    const closed = Number(data.closedMilliseconds || 0);
+                    const openTs = Number(data.openStartTs || 0);
+                    function tick(){ const now=Date.now(); const total = closed + (openTs ? Math.max(0, now - openTs) : 0); hours.textContent = 'Accumulated Hours: ' + fmt(total); indicator.style.background = ((total/3600000) >= 486) ? '#22c55e' : '#ef4444'; }
+                    tick();
+                    if (openTs) { const iv = setInterval(tick, 1000); try { window.__instTimers.set(key, iv); } catch {} }
+                    else { indicator.style.background = ((closed/3600000) >= 486) ? '#22c55e' : '#ef4444'; }
+                  } else {
+                    hours.textContent = 'Accumulated Hours: ' + fmtHMS(h);
+                    indicator.style.background = (Number(h||0) >= 486) ? '#22c55e' : '#ef4444';
+                  }
+                } catch {}
+              })();
+            });
+          } else {
+            list.innerHTML = '<div class="empty">No students found</div>';
+          }
+        }
+        var searchTimer=null;
+        function onSearchInput(){ if (searchTimer) try{ clearTimeout(searchTimer); }catch{} searchTimer=setTimeout(function(){ render(); }, 200); }
+        search.addEventListener('input', onSearchInput);
+        render();
+      });
+    </script>
+    <script>
+      (function(){
+        function fmtHoursFromDecimal(hours){ var ms=Math.max(0, Math.round(Number(hours||0)*3600000)); var h=Math.floor(ms/3600000); var m=Math.floor((ms%3600000)/60000); var s=Math.floor((ms%60000)/1000); return h+'h '+m+'m '+s+'s'; }
+        async function fetchAndSet(label, id){ try { if(!label||!id) return; label.textContent='Accumulated Hours: …'; var r = await fetch('/api/student/'+encodeURIComponent(id)+'/hours', { headers: (typeof authHeaders==='function'?authHeaders():{}), cache:'no-store' }); var j = await r.json().catch(function(){ return {}; }); var h = (r.ok && j.ok) ? Number(j.hours||0) : 0; label.textContent='Accumulated Hours: '+fmtHoursFromDecimal(h); } catch { if(label) label.textContent='Accumulated Hours: 0h 0m 0s'; } }
+        function applyFormat(label){ if(!label) return; var t=String(label.textContent||''); var m=t.match(/([0-9]+(?:\.[0-9]+)?)/); var n=m?Number(m[1]):null; var formatted=n!==null?fmtHoursFromDecimal(n):null; label.textContent='Accumulated Hours: '+(formatted||'…'); }
+        function hook(){ var orig = window.openEvalToggle; if (typeof orig !== 'function' || window.__evalToggleHooked) return; window.__evalToggleHooked = true; window.openEvalToggle = async function(s, enabled, onDone){ orig(s, enabled, onDone); try { var overlay = document.getElementById('evalToggleModal'); if (!overlay) return; var label = overlay.querySelector('.stat-label'); var id = (s && (s.idNumber||s.id_number)) || ''; if (label) { await fetchAndSet(label, id); var obs = new MutationObserver(function(){ applyFormat(label); }); obs.observe(label, { childList: true, subtree: true, characterData: true }); setTimeout(function(){ try { obs.disconnect(); } catch {} }, 4000); } } catch {} }; }
+        hook();
+        var tries=0, iv=setInterval(function(){ if(window.__evalToggleHooked){ try{ clearInterval(iv); }catch{} return; } hook(); tries++; if(tries>50){ try{ clearInterval(iv); }catch{} } }, 100);
+      })();
+    </script>
+    
+    <script>
+          document.addEventListener('DOMContentLoaded', function(){
+        function openDetails(s){
+          const existing = document.getElementById('studentDetailsModal');
+          if (existing) existing.remove();
+          const overlay = document.createElement('div');
+          overlay.id = 'studentDetailsModal';
+          overlay.className = 'open';
+          const box = document.createElement('div');
+          const id = s.idNumber || s.id_number || '';
+          const header = document.createElement('div');
+          header.style.fontWeight = '800';
+          header.style.fontSize = '1.05rem';
+          header.style.margin = '0 0 8px 0';
+          header.textContent = 'Student Details';
+          const sub = document.createElement('div');
+          sub.className = 'meta';
+          sub.style.marginBottom = '8px';
+          sub.textContent = `${s.name || id} (${id})`;
+          const grid = document.createElement('div');
+          grid.style.display = 'grid';
+          grid.style.gridTemplateColumns = 'auto 1fr';
+          grid.style.gap = '8px 12px';
+          grid.style.alignItems = 'center';
+          function addRow(label, value){
+            const l = document.createElement('div'); l.className='stat-label'; l.textContent = label + ':';
+            const v = document.createElement('div'); v.textContent = String(value || '—');
+            grid.appendChild(l); grid.appendChild(v);
+          }
+          addRow('Name', s.name || id);
+          addRow('ID Number', id);
+          addRow('Course', s.course || '—');
+          addRow('Section', s.section || '—');
+          (function(){ const m=window.supMap||{}; const sid=s.supervisorId||s.supervisorid||''; const nm=sid?(m[sid]||sid):'—'; addRow('Supervisor', nm); })();
+          const actions = document.createElement('div');
+          actions.className = 'buttons';
+          actions.style.display = 'grid';
+          actions.style.gridTemplateColumns = '1fr';
+          actions.style.gap = '8px';
+          actions.style.marginTop = '12px';
+          const ok = document.createElement('button');
+          ok.className = 'role-button';
+          ok.textContent = 'Close';
+          ok.addEventListener('click', function(){ overlay.remove(); });
+          actions.appendChild(ok);
+          box.appendChild(header);
+          box.appendChild(sub);
+          box.appendChild(grid);
+          box.appendChild(actions);
+          overlay.addEventListener('click', function(e){ if (e.target===overlay) overlay.remove(); });
+          box.addEventListener('click', function(e){ e.stopPropagation(); });
+          document.body.appendChild(overlay);
+          overlay.appendChild(box);
+        }
+        window.openDetails = openDetails;
+      });
+    </script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function(){
+        async function getHours(id){ try { const r = await apiFetch('/api/student/'+encodeURIComponent(id)+'/hours', { headers: authHeaders(), cache:'no-store' }); const j = await r.json().catch(()=>({})); return r.ok && j.ok ? Number(j.hours || 0) : 0; } catch { return 0; } }
+        function openEvalToggle(s, enabled, onDone){ const existing=document.getElementById('evalToggleModal'); if (existing) existing.remove(); const overlay=document.createElement('div'); overlay.id='evalToggleModal'; overlay.className='open'; const box=document.createElement('div'); const id=s.idNumber||s.id_number||''; const name=s.name||id; const header=document.createElement('div'); header.style.fontWeight='800'; header.style.fontSize='1.05rem'; header.style.margin='0 0 8px 0'; header.textContent = enabled ? 'Disable Evaluation' : 'Enable Evaluation'; const sub=document.createElement('div'); sub.className='meta'; sub.style.marginBottom='8px'; sub.textContent = name+' ('+id+')'; const hoursRow=document.createElement('div'); hoursRow.className='stat-label'; hoursRow.style.margin='6px 0'; hoursRow.textContent='OJT hours: …'; (async function(){ const h = await getHours(id); hoursRow.textContent = 'OJT hours: ' + h; })(); const actions=document.createElement('div'); actions.className='buttons'; actions.style.display='grid'; actions.style.gridTemplateColumns='1fr 1fr'; actions.style.gap='8px'; actions.style.marginTop='12px'; const close=document.createElement('button'); close.className='role-button'; close.textContent='Close'; close.addEventListener('click', function(){ overlay.remove(); }); const proceed=document.createElement('button'); proceed.className='role-button primary'; proceed.textContent='Proceed'; proceed.addEventListener('click', async function(){ try { const r = await apiFetch('/api/evaluation/status/'+encodeURIComponent(id), { method:'POST', headers: authHeaders(true), body: JSON.stringify({ enabled: !enabled }) }); const j = await r.json().catch(()=>({})); console.log('Evaluation toggle response', { status: r.status, body: j }); if (r.ok && j.ok) { if (typeof onDone==='function') onDone(!enabled); overlay.remove(); } else { const msg = j.error || ('HTTP '+r.status); console.error('Toggle failed:', msg); alert('Failed: '+msg); } } catch (e) { console.error('Network error:', e); alert('Network error'); } }); actions.appendChild(close); actions.appendChild(proceed); box.appendChild(header); box.appendChild(sub); box.appendChild(hoursRow); box.appendChild(actions); overlay.addEventListener('click', function(e){ if (e.target===overlay) overlay.remove(); }); box.addEventListener('click', function(e){ e.stopPropagation(); }); document.body.appendChild(overlay); overlay.appendChild(box); }
+        window.openEvalToggle = openEvalToggle;
+      });
+    </script>
+    <script>
+      (function(){
+        const nav = document.querySelector('.student-nav'); if (!nav) return; nav.classList.add('slideable');
+        let startY=null, lastY=null, moved=0;
+        function start(e){ const t=e.touches?e.touches[0]:e; startY=t.clientY; lastY=startY; moved=0; }
+        function move(e){ const t=e.touches?e.touches[0]:e; lastY=t.clientY; moved=lastY-startY; }
+        function end(){ if (moved>30) { document.body.classList.add('nav-hidden'); } else if (moved<-30) { document.body.classList.remove('nav-hidden'); } else { document.body.classList.toggle('nav-hidden'); } startY=null; lastY=null; moved=0; }
+        nav.addEventListener('touchstart', start, { passive:true });
+        nav.addEventListener('touchmove', move, { passive:true });
+        nav.addEventListener('touchend', end);
+        nav.addEventListener('mousedown', start);
+        nav.addEventListener('mousemove', function(e){ if (startY!==null) move(e); });
+        nav.addEventListener('mouseup', end);
+      })();
+    </script>
+  </body>
+</html>

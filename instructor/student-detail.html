@@ -1,0 +1,425 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Instructor — Student Detail</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container centered">
+      <div class="dashboard-main center-page">
+        <div class="attendance-card" style="margin-top:0.75rem">
+          <div id="headRow" style="display:flex;align-items:center;gap:8px;justify-content:flex-start;font-size:18px;font-weight:700;margin-bottom:8px">
+            <a id="backLink" href="/instructor/students-list.html" style="font-size:12px;padding:6px 10px;border:1px solid #ccc;border-radius:999px;color:#111;text-decoration:none;background:#fff;display:inline-flex;align-items:center;gap:6px">⬅️ <span>Back</span></a>
+            <span style="opacity:0.5">|</span>
+            <div id="pageTitle">ATTENDANCE</div>
+          </div>
+          <div id="meta" style="margin-bottom:8px;font-size:0.9rem;color:#6b7280"></div>
+          <div id="actionBar" class="buttons" style="display:grid;grid-template-columns:1fr;gap:8px;justify-content:center;justify-items:center;margin-bottom:10px">
+            <div id="tabBar" style="display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:4px;width:100%">
+              <span id="tabAttendance" style="flex:1;text-align:center;padding:8px 0;font-size:13px;font-weight:700;color:#2563eb;cursor:pointer">Attendance</span>
+              <span id="tabDetails" style="flex:1;text-align:center;padding:8px 0;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer">Reports</span>
+            </div>
+            <div id="evalRow" style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px">
+              <div style="font-weight:700;color:#111">TURN ON EVALUATION</div>
+              <button id="evalSwitch" type="button" aria-pressed="false" style="width:44px;height:26px;border-radius:9999px;border:1px solid #e5e7eb;background:#e5e7eb;position:relative;padding:0">
+                <span style="position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:9999px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.15)"></span>
+              </button>
+            </div>
+          </div>
+          <div class="search-wrap" style="margin-bottom:8px">
+            <div id="toolsRow" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:8px 10px;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="font-weight:700;color:#111">Month</div>
+                <select id="monthSelect" style="border:none;background:transparent;font-weight:700;color:#111;outline:none">
+                  <option value="">All</option>
+                  <option value="0">January</option>
+                  <option value="1">February</option>
+                  <option value="2">March</option>
+                  <option value="3">April</option>
+                  <option value="4">May</option>
+                  <option value="5">June</option>
+                  <option value="6">July</option>
+                  <option value="7">August</option>
+                  <option value="8">September</option>
+                  <option value="9">October</option>
+                  <option value="10">November</option>
+                  <option value="11">December</option>
+                </select>
+              </div>
+              <span id="analyticsLink" style="font-weight:700;color:#111;letter-spacing:0.02em;cursor:pointer">Analytics</span>
+            </div>
+            <input id="searchInput" class="input" type="text" placeholder="Search logs…" style="width:100%;margin-top:8px;padding-left:12px;border:1px solid #ccc" />
+          </div>
+          <div id="slideWrap" style="width:100%;overflow:hidden;border-radius:12px">
+            <div id="slideTrack" style="display:flex;width:200%;transition:transform 240ms ease">
+              <div style="width:50%">
+                <div id="content" class="recent-scroll small" style="max-height:60vh;overflow-y:auto"><div>Loading…</div></div>
+              </div>
+              <div style="width:50%">
+                <div id="contentDetails" class="recent-scroll small" style="max-height:60vh;overflow-y:auto"><div>Loading…</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <div id="photoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div id="photoBox" style="background:#fff;padding:10px;border-radius:10px;max-width:90%;max-height:85vh;display:flex;flex-direction:column;align-items:center">
+        <img id="photoModalImg" src="" alt="photo" style="max-width:100%;max-height:75vh;border-radius:8px" />
+        <button id="photoClose" class="role-button" style="margin-top:8px;padding:6px 12px">Close</button>
+      </div>
+    </div>
+          <div id="filterModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:#fff;padding:12px;border-radius:12px;width:clamp(320px,80vw,560px);max-height:70vh;display:flex;flex-direction:column;gap:10px">
+        <div class="recent-label" style="margin:0">Select Month</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="role-button" data-month="" style="grid-column:1 / -1">All months</button>
+          <button class="role-button" data-month="0">January</button>
+          <button class="role-button" data-month="1">February</button>
+          <button class="role-button" data-month="2">March</button>
+          <button class="role-button" data-month="3">April</button>
+          <button class="role-button" data-month="4">May</button>
+          <button class="role-button" data-month="5">June</button>
+          <button class="role-button" data-month="6">July</button>
+          <button class="role-button" data-month="7">August</button>
+          <button class="role-button" data-month="8">September</button>
+          <button class="role-button" data-month="9">October</button>
+          <button class="role-button" data-month="10">November</button>
+          <button class="role-button" data-month="11">December</button>
+        </div>
+        <button id="filterClose" class="role-button">Close</button>
+      </div>
+    </div>
+    <div id="reportViewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:#fff;padding:16px;border-radius:12px;width:clamp(320px,80vw,720px);max-height:85vh;display:flex;flex-direction:column;gap:10px;position:relative">
+        <button id="reportViewClose" class="role-button" style="position:absolute;top:8px;right:8px">Close</button>
+        <div class="cam-header" style="margin-top:48px;margin-bottom:4px"><span class="stat-label" id="reportViewTitle"></span></div>
+        <div id="reportViewText" class="recent-scroll small" style="max-height:60vh;overflow-y:auto"></div>
+      </div>
+    </div>
+    <nav class="student-nav">
+      <div class="student-nav-inner">
+        <a href="/instructor/dashboard.html" aria-label="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7"/><path d="M5 11v9h14v-9"/></svg>
+        </a>
+        <a href="/instructor/students.html" class="active" aria-label="Logs">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </a>
+        <a href="/instructor/reports.html" aria-label="Reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 012-2h10"/><path d="M20 7v12a2 2 0 01-2 2H6"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h6"/></svg>
+        </a>
+        <a href="/instructor/profile.html" aria-label="Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/config.js"></script>
+    <script>
+      function authHeaders(json){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function fmtWhen(ts){ const d = new Date(Number(ts||Date.now())); const date = d.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' }); const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' }); return date + ' at ' + time; }
+      function getParam(name){ const u = new URL(window.location.href); return u.searchParams.get(name); }
+      document.addEventListener('DOMContentLoaded', async function(){
+        const id = getParam('id');
+        const view = String(getParam('view')||'attendance');
+        const courseParam = String(getParam('course')||'').trim();
+        const sectionParam = String(getParam('section')||'').trim();
+        const pageTitle = document.getElementById('pageTitle');
+        const meta = document.getElementById('meta');
+        const box = document.getElementById('content');
+        const search = document.getElementById('searchInput');
+        const monthSelect = document.getElementById('monthSelect');
+        let selectedMonth = '';
+        if (!id) { window.location.replace('/instructor/students-list.html'); return; }
+        pageTitle.textContent = (view === 'reports' ? 'WEEKLY REPORTS' : (view === 'analytics' ? 'ANALYTICS' : 'ATTENDANCE'));
+        try { const back = document.getElementById('backLink'); if (back && courseParam && sectionParam) back.href = `/instructor/students-list.html?course=${encodeURIComponent(courseParam)}&section=${encodeURIComponent(sectionParam)}`; } catch {}
+        if (view === 'attendance') { try { const s = document.getElementById('searchInput'); if (s) s.remove(); } catch {} }
+        box.innerHTML = '<div>Loading…</div>';
+        try {
+          const meR = await fetch('/api/me', { headers: authHeaders() });
+          const meJ = await meR.json();
+          if (!(meR.ok && meJ.ok)) { window.location.replace('/index.html'); return; }
+          let studentName = id;
+          try {
+            const sr = await fetch('/api/students', { headers: authHeaders() });
+            const sj = await sr.json();
+            const rows = (sr.ok && sj.ok && Array.isArray(sj.data)) ? sj.data : [];
+            const found = rows.find(x => String(x.id_number||x.idNumber||'') === String(id));
+            if (found) studentName = found.name || id;
+          } catch {}
+          async function getHoursLocal(id0){ try { const r = await fetch('/api/student/'+encodeURIComponent(id0)+'/hours', { headers: authHeaders(), cache:'no-store' }); const j = await r.json().catch(()=>({})); return r.ok && j.ok ? Number(j.hours || 0) : 0; } catch { return 0; } }
+          function setHeader(nm, id0){
+            const name = String(nm||id0);
+            const idv = String(id0||'');
+            const dot = `<span id="statusDot" style="position:absolute;left:0;top:50%;transform:translateY(-50%);display:inline-block;width:12px;height:12px;border-radius:9999px;background:#ef4444;border:1px solid #e5e7eb"></span>`;
+            meta.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;position:relative;gap:10px;text-align:center"><div>${dot}</div><div><div style="font-weight:800;font-size:1.1rem;text-align:center">${name}</div><div style="font-size:0.9rem;color:#6b7280;text-align:center">${idv}</div></div></div>`;
+          }
+          setHeader(studentName, id);
+          const tabAttendance = document.getElementById('tabAttendance');
+          const tabDetails = document.getElementById('tabDetails');
+          const evalSwitch = document.getElementById('evalSwitch');
+          const slideTrack = document.getElementById('slideTrack');
+          const detailsBox = document.getElementById('contentDetails');
+          function setTab(which){ const att = String(which||'attendance')==='attendance'; if (tabAttendance && tabDetails) { tabAttendance.style.color = att ? '#2563eb' : '#6b7280'; tabAttendance.style.fontWeight = att ? '700' : '600'; tabDetails.style.color = att ? '#6b7280' : '#2563eb'; tabDetails.style.fontWeight = att ? '600' : '700'; } if (slideTrack) { slideTrack.style.transform = att ? 'translateX(0)' : 'translateX(-50%)'; } }
+          let studentObj = null;
+          try {
+            const sr = await fetch('/api/students', { headers: authHeaders() });
+            const sj = await sr.json();
+            const rows = (sr.ok && sj.ok && Array.isArray(sj.data)) ? sj.data : [];
+            studentObj = rows.find(x => String(x.id_number||x.idNumber||'') === String(id)) || null;
+          } catch {}
+          if (studentObj) { setHeader(studentObj.name || studentName, id); }
+          try { const h0 = await getHoursLocal(id); const dot = document.getElementById('statusDot'); if (dot) dot.style.background = (Number(h0||0) >= 486) ? '#22c55e' : '#ef4444'; } catch {}
+          try {
+            const back = document.getElementById('backLink');
+            const params = new URLSearchParams(window.location.search);
+            let c = String(params.get('course')||'').trim();
+            let s = String(params.get('section')||'').trim();
+            if ((!c || !s) && studentObj) {
+              if (!c) c = String(studentObj.course || studentObj.course_code || studentObj.courseCode || '').trim();
+              if (!s) s = String(studentObj.section || studentObj.section_code || studentObj.sectionCode || '').trim();
+            }
+            if (!c || !s) {
+              c = c || String(meJ.data?.course || meJ.data?.courseCode || '').trim();
+              s = s || String(meJ.data?.section || '').trim();
+            }
+            if (back) {
+              const query = new URLSearchParams();
+              if (c) query.set('course', c);
+              if (s) query.set('section', s);
+              back.href = `/instructor/students-list.html?${query.toString()}`;
+            }
+          } catch {}
+          try {
+            const rSup = await fetch('/api/supervisors', { headers: authHeaders(), cache: 'no-store' });
+            const jSup = await rSup.json().catch(()=>({}));
+            const supRows = rSup.ok && jSup.ok ? (Array.isArray(jSup.data) ? jSup.data : []) : [];
+            const m = {};
+            for (const s of supRows) { const sid = String(s.idNumber||s.idnumber||s.id||'').trim(); if (sid) m[sid] = s.name || sid; }
+            window.supMap = m;
+          } catch {}
+          if (tabDetails) { tabDetails.addEventListener('click', function(e){ e.preventDefault(); setTab('reports'); renderReportsPane(); const qs=new URLSearchParams(); qs.set('id', id); qs.set('view', 'reports'); if (courseParam) qs.set('course', courseParam); if (sectionParam) qs.set('section', sectionParam); history.replaceState(null,'',`/instructor/student-detail.html?${qs.toString()}`); }); }
+          if (tabAttendance) { tabAttendance.addEventListener('click', function(e){ e.preventDefault(); setTab('attendance'); renderAttendance(); const qs=new URLSearchParams(); qs.set('id', id); qs.set('view', 'attendance'); if (courseParam) qs.set('course', courseParam); if (sectionParam) qs.set('section', sectionParam); history.replaceState(null,'',`/instructor/student-detail.html?${qs.toString()}`); }); }
+          if (evalSwitch) {
+            (async function(){
+              try {
+                const r = await fetch('/api/evaluation/status/'+encodeURIComponent(id), { headers: authHeaders(), cache: 'no-store' });
+                const j = await r.json().catch(()=>({}));
+                let enabled = !!(r.ok && j.enabled);
+                function paint(){ evalSwitch.setAttribute('aria-pressed', enabled ? 'true' : 'false'); const knob = evalSwitch.querySelector('span'); if (knob) { knob.style.left = enabled ? '21px' : '3px'; } evalSwitch.style.background = enabled ? '#22c55e' : '#e5e7eb'; evalSwitch.style.borderColor = enabled ? '#22c55e' : '#e5e7eb'; }
+                paint();
+                evalSwitch.addEventListener('click', async function(){
+                  try {
+                    const turningOn = !enabled;
+                    if (turningOn) {
+                      const hNow = await getHoursLocal(id);
+                      if (Number(hNow||0) < 486) { const ok = window.confirm('Are you sure you want to turn on evaluation? The student has not reached the required 486 hours.'); if (!ok) return; }
+                    }
+                    const r2 = await fetch('/api/evaluation/status/'+encodeURIComponent(id), { method:'POST', headers: authHeaders(true), body: JSON.stringify({ enabled: !enabled }) });
+                    const j2 = await r2.json().catch(()=>({}));
+                    if (r2.ok && j2.ok) { enabled = !enabled; paint(); try { localStorage.setItem('eval:update:'+id, String(Date.now())); } catch {} if (enabled) { alert('Successfully turned on evaluation'); } }
+                    else { alert('Failed: ' + (j2.error || ('HTTP '+r2.status))); }
+                  } catch { alert('Network error'); }
+                });
+              } catch {
+                let enabled = false; function paint(){ evalSwitch.setAttribute('aria-pressed', enabled ? 'true' : 'false'); const knob = evalSwitch.querySelector('span'); if (knob) { knob.style.left = enabled ? '21px' : '3px'; } evalSwitch.style.background = enabled ? '#22c55e' : '#e5e7eb'; evalSwitch.style.borderColor = enabled ? '#22c55e' : '#e5e7eb'; }
+                paint();
+                evalSwitch.addEventListener('click', async function(){
+                  try {
+                    const turningOn = !enabled;
+                    if (turningOn) {
+                      const hNow = await getHoursLocal(id);
+                      if (Number(hNow||0) < 486) { const ok = window.confirm('Are you sure you want to turn on evaluation? The student has not reached the required 486 hours.'); if (!ok) return; }
+                    }
+                    const r2 = await fetch('/api/evaluation/status/'+encodeURIComponent(id), { method:'POST', headers: authHeaders(true), body: JSON.stringify({ enabled: !enabled }) });
+                    const j2 = await r2.json().catch(()=>({}));
+                    if (r2.ok && j2.ok) { enabled = !enabled; paint(); try { localStorage.setItem('eval:update:'+id, String(Date.now())); } catch {} if (enabled) { alert('Successfully turned on evaluation'); } }
+                    else { alert('Failed: ' + (j2.error || ('HTTP '+r2.status))); }
+                  } catch { alert('Network error'); }
+                });
+              }
+            })();
+          }
+          let attRowsRef = [];
+          let repRowsRef = [];
+          let weekOffsetRef = 0;
+          function renderAttendance(){
+            const q = String(search?.value || '').toLowerCase();
+            if (attRowsRef.length) {
+              box.innerHTML = '';
+              const selected = String(selectedMonth||'').trim();
+              box.style.fontSize = '0.85em';
+              const byDay = new Map();
+              attRowsRef.forEach(x => {
+                const d = new Date(Number(x.ts||Date.now()));
+                if (selected && d.getMonth() !== Number(selected)) return;
+                const dateKey = d.toLocaleDateString('en-CA');
+                const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' });
+                const label = x.type==='in'?'in':'out';
+                const st = String(x.status||'').toLowerCase()==='confirmed'?'confirmed':'pending';
+                const match = !q || label.includes(q) || dateKey.toLowerCase().includes(q) || time.toLowerCase().includes(q) || st.includes(q);
+                if (!match) return;
+                if (!byDay.has(dateKey)) byDay.set(dateKey, []);
+                byDay.get(dateKey).push(x);
+              });
+              const sortedKeys = Array.from(byDay.keys()).sort((a,b)=> new Date(b).getTime() - new Date(a).getTime());
+              sortedKeys.forEach(k => {
+                const d = new Date(k);
+                const longDate = d.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' });
+                const group = document.createElement('div'); group.style.padding='10px'; group.style.margin='8px 0'; group.style.borderRadius='12px'; group.style.boxShadow='0 4px 10px rgba(0,0,0,0.08)'; group.style.background='#fff'; group.style.border='1px solid #e5e7eb';
+                const header = document.createElement('div'); header.style.fontWeight='800'; header.style.fontSize='1rem'; header.style.margin='0 0 8px'; header.textContent = longDate;
+                group.appendChild(header);
+                const items = byDay.get(k) || [];
+                items.forEach((x,i) => {
+                  const t = new Date(Number(x.ts||Date.now()));
+                  const time = t.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' });
+                  const row = document.createElement('div'); row.style.padding='6px 0'; if(i){ row.style.borderTop='1px solid #e5e7eb'; }
+                  const title = document.createElement('div'); title.className='recent-title'; title.style.fontSize='0.85rem'; title.textContent = (x.type==='in'?'Time In':'Time Out') + ' — ' + time;
+                  const status = document.createElement('div'); status.className='recent-sub'; status.style.fontSize='0.75rem';
+                  const pill=document.createElement('span'); pill.className='status-pill '+(String(x.status||'').toLowerCase()==='confirmed'?'status-confirmed':'status-pending'); pill.textContent = String(x.status||'').toLowerCase()==='confirmed' ? '✔️ Confirmed' : 'Pending'; pill.style.display='inline-block'; pill.style.marginLeft='6px'; pill.style.padding='2px 8px'; pill.style.fontSize='0.7rem';
+                  status.appendChild(pill);
+                  const actions = document.createElement('div'); actions.className='recent-actions';
+                  if (x.photoUrl) { const a=document.createElement('a'); a.href='#'; a.textContent='View Photo'; a.addEventListener('click',(e)=>{ e.preventDefault(); const m=document.getElementById('photoModal'); const img=document.getElementById('photoModalImg'); img.src = x.photoUrl; m.style.display='flex'; }); actions.appendChild(a); }
+                  row.appendChild(title);
+                  row.appendChild(status);
+                  if (actions.childNodes.length) row.appendChild(actions);
+                  group.appendChild(row);
+                });
+                box.appendChild(group);
+              });
+              if (!box.childNodes.length) box.innerHTML = '<div>No activity yet</div>';
+            } else { box.innerHTML = '<div>No activity yet</div>'; }
+          }
+          function renderReportsPane(){
+            const box2 = detailsBox; if (!box2) return; const rows = Array.isArray(repRowsRef) ? repRowsRef : []; box2.innerHTML = '';
+            if (rows.length) {
+              rows.forEach(x => {
+                const d = new Date(Number(x.ts||Date.now()));
+                const date = d.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' });
+                const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' });
+                const el = document.createElement('div'); el.className='recent-item';
+                el.style.padding='10px 12px'; el.style.margin='8px 0'; el.style.borderRadius='12px'; el.style.background='var(--surface-alpha)'; el.style.boxShadow='0 4px 10px rgba(0,0,0,0.08)';
+                const title = document.createElement('div'); title.className='recent-title'; const baseTitle = String(x.title||'').trim(); title.textContent = baseTitle ? `📄 Report — ${baseTitle}` : '📄 Report';
+                const sub = document.createElement('div'); sub.className='recent-sub'; sub.style.opacity='0.8'; sub.style.fontSize='0.9rem'; sub.textContent = `${date} • ${time}`;
+                const rawStatus = String(x.status||'').toLowerCase();
+                const statusLabel = rawStatus==='under_review' ? 'Under Review' : (rawStatus==='accepted' ? 'Accepted' : (rawStatus==='rejected' ? 'Rejected' : (rawStatus.includes('draft') ? 'Draft' : 'Submitted')));
+                const pill=document.createElement('span'); const pillClass = statusLabel==='Under Review' ? 'status-submitted' : (statusLabel==='Accepted' ? 'status-confirmed' : (statusLabel==='Rejected' ? 'status-pending' : (statusLabel==='Draft' ? 'status-draft' : 'status-submitted'))); pill.className='status-pill '+pillClass; pill.textContent=statusLabel; sub.appendChild(pill);
+                const actions = document.createElement('div'); actions.className='recent-actions'; actions.style.display='flex'; actions.style.alignItems='center'; actions.style.justifyContent='center'; actions.style.gap='8px'; actions.style.marginTop='8px';
+                const files = Array.isArray(x.files) ? x.files : []; const first = files[0] || {};
+                const viewBtn = document.createElement('button'); viewBtn.className='role-button neutral'; viewBtn.type='button'; viewBtn.style.width='32px'; viewBtn.style.height='32px'; viewBtn.style.padding='0'; viewBtn.style.display='flex'; viewBtn.style.alignItems='center'; viewBtn.style.justifyContent='center'; viewBtn.style.border='1px solid #d1d5db'; viewBtn.style.borderRadius='8px'; viewBtn.style.background='#fff'; viewBtn.style.color='#6b7280'; viewBtn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>'; const vs=viewBtn.querySelector('svg'); if(vs){ vs.setAttribute('width','20'); vs.setAttribute('height','20'); vs.setAttribute('stroke','currentColor'); }
+                viewBtn.addEventListener('click', function(){ openView(x); });
+                if (first && first.url) {
+                  const dl = document.createElement('a'); dl.href=String(first.url); dl.target='_blank'; dl.rel='noreferrer'; if (first.name) dl.setAttribute('download', String(first.name)); dl.className='role-button neutral'; dl.style.width='32px'; dl.style.height='32px'; dl.style.padding='0'; dl.style.display='flex'; dl.style.alignItems='center'; dl.style.justifyContent='center'; dl.style.border='1px solid #d1d5db'; dl.style.borderRadius='8px'; dl.style.background='#fff'; dl.style.color='#6b7280'; dl.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>'; const s=dl.querySelector('svg'); if(s){ s.setAttribute('width','20'); s.setAttribute('height','20'); s.setAttribute('stroke','currentColor'); } actions.appendChild(dl);
+                } else {
+                  actions.appendChild(viewBtn);
+                }
+                el.appendChild(title); el.appendChild(sub); if (actions.childNodes.length) el.appendChild(actions);
+                box2.appendChild(el);
+              });
+            } else { box2.innerHTML = '<div>No reports</div>'; }
+          }
+          async function renderView(){
+            const [attRes, repRes] = await Promise.all([
+              fetch('/api/instructor/students/activity', { headers: authHeaders(), cache: 'no-store' }),
+              fetch('/api/instructor/reports/activity', { headers: authHeaders(), cache: 'no-store' })
+            ]);
+            const [attJ, repJ] = await Promise.all([attRes.json().catch(()=>({})), repRes.json().catch(()=>({}))]);
+            const attAll = attRes.ok && attJ.ok ? (Array.isArray(attJ.data) ? attJ.data : []) : [];
+            const repAll = repRes.ok && repJ.ok ? (Array.isArray(repJ.data) ? repJ.data : []) : [];
+            const attRows = attAll.filter(x => String(x.idNumber||'') === String(id)).sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
+            const repRows = repAll.filter(x => String(x.idNumber||'') === String(id)).sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
+            attRowsRef = attRows;
+            repRowsRef = repRows;
+            if (view === 'attendance') {
+              setTab('attendance');
+              renderAttendance();
+              try { const a = document.getElementById('analyticsLink'); if (a) { a.onclick = function(){ window.location.href = '/instructor/student-analytics.html?id=' + encodeURIComponent(id); }; } } catch {}
+            } else if (view === 'reports') {
+              setTab('reports');
+              renderReportsPane();
+            } else if (view === 'analytics') {
+              window.location.replace('/instructor/student-analytics.html?id=' + encodeURIComponent(id));
+              return;
+            } else {
+              const totalIn = attRows.filter(x=>x.type==='in').length;
+              const totalOut = attRows.filter(x=>x.type==='out').length;
+              const confirmed = attRows.filter(x=>String(x.status||'')==='confirmed').length;
+              const pending = attRows.filter(x=>String(x.status||'')==='awaiting_supervisor').length;
+              const reports = repRows.length;
+              const lastAtt = attRows[0]?.ts ? fmtWhen(attRows[0].ts) : 'N/A';
+              const lastRep = repRows[0]?.ts ? fmtWhen(repRows[0].ts) : 'N/A';
+              box.innerHTML = '';
+              const lines = [
+                `Total time-ins: ${totalIn}`,
+                `Total time-outs: ${totalOut}`,
+                `Confirmed attendance: ${confirmed}`,
+                `Pending attendance: ${pending}`,
+                `Reports: ${reports}`,
+                `Last attendance: ${lastAtt}`,
+                `Last report: ${lastRep}`
+              ];
+              lines.forEach(t=>{ const d=document.createElement('div'); d.textContent=t; box.appendChild(d); });
+            }
+          }
+          function openView(x){ const m=document.getElementById('reportViewModal'); const t=document.getElementById('reportViewTitle'); const body=document.getElementById('reportViewText'); const hasFiles=Array.isArray(x.files)&&x.files.length>0; const baseTitle=String(x.title||'').trim(); t.textContent= baseTitle || (hasFiles ? 'File upload' : '(No title)'); body.textContent=String(x.text||'').trim()||'(No content)'; m.style.display='flex'; const closeBtn=document.getElementById('reportViewClose'); if (closeBtn) closeBtn.addEventListener('click', function(){ m.style.display='none'; }); m.addEventListener('click', function(e){ if (e.target===m) m.style.display='none'; }); }
+          await renderView();
+          if (search) search.addEventListener('input', function(){ if (view==='attendance') renderAttendance(); });
+          if (monthSelect) monthSelect.addEventListener('change', function(){ selectedMonth = String(this.value||''); if (view==='attendance') { renderAttendance(); } else if (view==='analytics') { weekOffsetRef = 0; renderView(); } });
+          try {
+            const sb = window.supabase?.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+            if (sb && id) {
+              const ch = sb.channel('inst:'+id);
+              ch.on('postgres_changes', { event:'*', schema:'public', table:'attendance', filter:'idnumber=eq.'+id }, function(){ renderView(); });
+              ch.on('broadcast', { event:'attendance' }, function(payload){ try { const p = payload?.payload; if (String(p?.idNumber||'') === String(id)) renderView(); } catch { renderView(); } });
+              ch.subscribe();
+            }
+            try { setInterval(function(){ renderView(); }, 5000); } catch {}
+          } catch {}
+        } catch { box.innerHTML = '<div>Error loading</div>'; }
+        const modal = document.getElementById('photoModal');
+        const closeBtn = document.getElementById('photoClose');
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display='none'; });
+        closeBtn.addEventListener('click', () => { modal.style.display='none'; });
+      });
+    </script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function(){
+        function openDetails(s){
+          const existing = document.getElementById('studentDetailsModal'); if (existing) existing.remove();
+          const overlay = document.createElement('div'); overlay.id = 'studentDetailsModal'; overlay.className = 'open';
+          const box = document.createElement('div'); const id = s.idNumber || s.id_number || '';
+          const header = document.createElement('div'); header.style.fontWeight = '800'; header.style.fontSize = '1.05rem'; header.style.margin = '0 0 8px 0'; header.textContent = 'Student Details';
+          const sub = document.createElement('div'); sub.className = 'meta'; sub.style.marginBottom = '8px'; sub.textContent = `${s.name || id} (${id})`;
+          const grid = document.createElement('div'); grid.style.display = 'grid'; grid.style.gridTemplateColumns = 'auto 1fr'; grid.style.gap = '8px 12px'; grid.style.alignItems = 'center';
+          function addRow(label, value){ const l = document.createElement('div'); l.className='stat-label'; l.textContent = label + ':'; const v = document.createElement('div'); v.textContent = String(value || '—'); grid.appendChild(l); grid.appendChild(v); }
+          addRow('Name', s.name || id); addRow('ID Number', id); addRow('Course', s.course || '—'); addRow('Section', s.section || '—'); (function(){ const m=window.supMap||{}; const sid=s.supervisorId||s.supervisorid||''; const nm=sid?(m[sid]||sid):'—'; addRow('Supervisor', nm); })();
+          const actions = document.createElement('div'); actions.className='buttons'; actions.style.display='grid'; actions.style.gridTemplateColumns='1fr'; actions.style.gap='8px'; actions.style.marginTop='12px';
+          const ok = document.createElement('button'); ok.className='role-button'; ok.textContent='Close'; ok.addEventListener('click', function(){ overlay.remove(); }); actions.appendChild(ok);
+          box.appendChild(header); box.appendChild(sub); box.appendChild(grid); box.appendChild(actions);
+          overlay.addEventListener('click', function(e){ if (e.target===overlay) overlay.remove(); }); box.addEventListener('click', function(e){ e.stopPropagation(); });
+          document.body.appendChild(overlay); overlay.appendChild(box);
+        }
+        window.openDetails = openDetails;
+      });
+    </script>
+    <script>
+      (function(){
+        const nav = document.querySelector('.student-nav'); if (!nav) return; nav.classList.add('slideable');
+        let startY=null, lastY=null, moved=0;
+        function start(e){ const t=e.touches?e.touches[0]:e; startY=t.clientY; lastY=startY; moved=0; }
+        function move(e){ const t=e.touches?e.touches[0]:e; lastY=t.clientY; moved=lastY-startY; }
+        function end(){ if (moved>30) { document.body.classList.add('nav-hidden'); } else if (moved<-30) { document.body.classList.remove('nav-hidden'); } else { document.body.classList.toggle('nav-hidden'); } startY=null; lastY=null; moved=0; }
+        nav.addEventListener('touchstart', start, { passive:true });
+        nav.addEventListener('touchmove', move, { passive:true });
+        nav.addEventListener('touchend', end);
+        nav.addEventListener('mousedown', start);
+        nav.addEventListener('mousemove', function(e){ if (startY!==null) move(e); });
+        nav.addEventListener('mouseup', end);
+      })();
+    </script>
+  </body>
+</html>

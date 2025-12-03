@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack – Instructors</title>
+    <link rel="stylesheet" href="/styles.css" />
+    
+  </head>
+  <body>
+    <main id="root"></main>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script type="module">
+      function bootFallback(msg){
+        var root = document.getElementById('root');
+        if (!root) return;
+        var wrap = document.createElement('div');
+        wrap.className = 'dashboard-main center-page';
+        var t = document.createElement('h1'); t.className = 'title'; t.textContent = 'OJTonTrack';
+        var s = document.createElement('p'); s.className = 'subtitle'; s.textContent = 'User Management – Instructors';
+        var e = document.createElement('p'); e.style.color = '#b91c1c'; e.style.fontWeight = '600'; e.textContent = msg || 'React failed to load';
+        wrap.appendChild(t); wrap.appendChild(s); wrap.appendChild(e);
+        root.innerHTML = '';
+        var main = document.createElement('main'); main.className = 'container centered';
+        main.appendChild(wrap);
+        root.appendChild(main);
+      }
+
+        function Page() {
+        const endpoint = '/api/instructors';
+        const [allSuggestions, setAllSuggestions] = React.useState([]);
+        const [sectionsById, setSectionsById] = React.useState({});
+        const [coursesById, setCoursesById] = React.useState({});
+        const [error, setError] = React.useState('');
+        const [search, setSearch] = React.useState('');
+        const [showAdd, setShowAdd] = React.useState(false);
+        const [editing, setEditing] = React.useState(null);
+        const [toDelete, setToDelete] = React.useState(null);
+
+        function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+        async function ensureAdmin() {
+          try {
+            const r = await fetch('/api/me', { headers: authHeaders() });
+            const j = await r.json().catch(() => ({}));
+            const role = j?.data?.role || j?.role || null;
+            if (!r.ok || role !== 'super_admin') {
+              try { sessionStorage.removeItem('userToken'); } catch {}
+              try { sessionStorage.removeItem('role'); } catch {}
+              setError('Please log in as super admin');
+              return false;
+            }
+            return true;
+          } catch {
+            setError('Failed to verify admin');
+            return false;
+          }
+        }
+        function reload() {
+          fetch(endpoint, { headers: authHeaders() })
+            .then(async (r) => {
+              const data = await r.json().catch(() => ({ ok: false, error: 'Invalid JSON' }));
+              if (r.ok && data && data.ok) {
+                setAllSuggestions(Array.isArray(data.data) ? data.data : []);
+                setError('');
+                try {
+                  const list = Array.isArray(data.data) ? data.data : [];
+                  const callsSec = list.map(u => fetch(`/api/instructor/${encodeURIComponent(u.idNumber)}/sections`, { headers: authHeaders() })
+                    .then(rr => rr.json()).then(jj => ({ id: u.idNumber, rows: (jj && jj.ok && Array.isArray(jj.data)) ? jj.data : [] })).catch(()=>({ id: u.idNumber, rows: [] })));
+                  const callsCrs = list.map(u => fetch(`/api/instructor/${encodeURIComponent(u.idNumber)}/courses`, { headers: authHeaders() })
+                    .then(rr => rr.json()).then(jj => ({ id: u.idNumber, rows: (jj && jj.ok && Array.isArray(jj.data)) ? jj.data : [] })).catch(()=>({ id: u.idNumber, rows: [] })));
+                  const [resultsSec, resultsCrs] = await Promise.all([Promise.all(callsSec), Promise.all(callsCrs)]);
+                  const mapSec = {}; const mapCrs = {};
+                  for (const it of resultsSec) { mapSec[it.id] = it.rows.map(s => s.code || s); }
+                  for (const it of resultsCrs) { mapCrs[it.id] = it.rows.map(c => String(c)); }
+                  setSectionsById(mapSec);
+                  setCoursesById(mapCrs);
+                } catch {}
+              } else {
+                setError((data && data.error) || 'Failed to load instructors');
+              }
+            })
+            .catch(() => setError('Failed to load instructors'));
+        }
+        React.useEffect(() => { (async()=>{ const ok = await ensureAdmin(); if (ok) reload(); })(); }, []);
+
+        async function addUser(e) {
+          e.preventDefault();
+          const f = e.currentTarget;
+          const payload = {
+            idNumber: f.idNumber.value.trim(),
+            password: f.password.value.trim(),
+            role: 'instructor',
+            firstName: (f.firstName?.value || '').trim(),
+            middleName: (f.middleName?.value || '').trim(),
+            lastName: (f.lastName?.value || '').trim(),
+            course: null,
+            section: null
+          };
+          const resp = await fetch('/api/users', { method: 'POST', headers: authHeaders(true), body: JSON.stringify(payload) });
+          const json = await resp.json();
+          if (resp.ok && json.ok) {
+            try {
+              const arr = JSON.parse(f.sections?.value || '[]');
+              if (Array.isArray(arr) && arr.length) {
+                const codes = arr.map(c => String(c).replace(' ', '-'));
+                await fetch(`/api/instructor/${encodeURIComponent(payload.idNumber)}/sections/assign`, { method: 'POST', headers: authHeaders(true), body: JSON.stringify({ codes }) });
+                const addCourses = Array.from(new Set(arr.map(c => { const s=String(c); const hy=s.split('-')[0]; const sp=s.split(' ')[0]; return String(hy||sp||'').trim(); }).filter(Boolean)));
+                if (addCourses.length) {
+                  await fetch(`/api/instructor/${encodeURIComponent(payload.idNumber)}/courses/assign`, { method: 'POST', headers: authHeaders(true), body: JSON.stringify({ courses: addCourses }) });
+                }
+              }
+            } catch {}
+            f.reset(); setShowAdd(false); reload();
+          }
+          else if ((json && json.error) === 'Forbidden') { alert('Forbidden: super admin required'); } else alert(json.error || 'Failed');
+        }
+
+        async function deleteUser(id) {
+          const resp = await fetch('/api/users/' + id, { method: 'DELETE', headers: authHeaders() });
+          const json = await resp.json();
+          if (resp.ok && json.ok) reload(); else if ((json && json.error) === 'Forbidden') { alert('Forbidden: super admin required'); } else alert(json.error || 'Failed');
+        }
+
+        async function updateUser(id, payload) {
+          const resp = await fetch('/api/users/' + id, { method: 'PUT', headers: authHeaders(true), body: JSON.stringify(payload) });
+          const json = await resp.json();
+          if (resp.ok && json.ok) reload(); else alert(json.error || 'Failed');
+        }
+
+        function List() {
+          const visible = React.useMemo(() => {
+            const qLocal = search.trim().toLowerCase();
+            if (!qLocal) return allSuggestions;
+            return allSuggestions.filter(u => (u.name||'').toLowerCase().includes(qLocal) || (u.idNumber||'').toLowerCase().includes(qLocal));
+          }, [allSuggestions, search]);
+          if (!visible.length) return React.createElement('div', { className: 'empty' }, 'No instructors yet. Add one to get started.');
+          return React.createElement('div', { className: 'buttons', style: { width: '100%', margin: 0 } }, visible.map(u => React.createElement('div', { key: u.idNumber, className: 'list-card' }, [
+            React.createElement('div', { key: 'title', className: 'title' }, `${u.name || '(No name)'} (${u.idNumber})`),
+            (() => {
+              const secArr = Array.isArray(sectionsById[u.idNumber]) && sectionsById[u.idNumber].length ? sectionsById[u.idNumber] : (Array.isArray(u.sections) && u.sections.length ? u.sections : (() => { const s = String(u.section||'').trim(); const c0 = String(u.course||'').trim(); return s ? (c0 ? [c0 + '-' + s] : [s]) : []; })());
+              const courseArr = Array.isArray(coursesById[u.idNumber]) && coursesById[u.idNumber].length ? coursesById[u.idNumber] : (() => {
+                const fromRow = Array.isArray(u.courses) && u.courses.length ? u.courses.map(String) : [];
+                if (fromRow.length) return fromRow;
+                const inferred = Array.from(new Set(secArr.map(s => String(s).split('-')[0]).filter(Boolean)));
+                if (inferred.length) return inferred;
+                const c = String(u.course || '').trim();
+                return c ? [c] : [];
+              })();
+              const secLabel = secArr.length ? secArr.join(', ') : '—';
+              const courseLabel = courseArr.length ? courseArr.join(', ') : '—';
+              return React.createElement('div', { key: 'meta', className: 'meta' }, `Courses: ${courseLabel} | Sections: ${secLabel}`);
+            })(),
+            React.createElement('div', { key: 'actions', className: 'actions' }, [
+              React.createElement('button', { key: 'edit', className: 'role-button neutral', onClick: () => {
+                const parts = String(u.name || '').trim().split(/\s+/);
+                const first = parts[0] || '';
+                const last = parts.length > 1 ? parts[parts.length - 1] : '';
+                const middle = parts.slice(1, -1).join(' ');
+                setEditing({ idNumber: u.idNumber, firstName: u.firstName || first, middleName: u.middleName || middle, lastName: u.lastName || last, course: u.course || '' });
+              } }, '✏️ Edit'),
+              
+              React.createElement('button', { key: 'del', className: 'role-button danger', onClick: () => setToDelete(u.idNumber) }, '🗑 Delete')
+            ])
+          ])));
+        }
+
+        function Toolbar() {
+          return React.createElement('div', {
+            key: 'toolbar',
+            style: {
+              width: 'min(92vw, 560px)',
+              display: 'grid',
+              gridTemplateColumns: '1fr',
+              alignItems: 'center',
+              gap: '0.75rem',
+              margin: '0.5rem auto 1rem'
+            }
+          }, [
+            React.createElement('div', { key: 'searchWrap', className: 'search-wrap', style: { width: '100%', margin: '0 auto' } }, [
+              React.createElement('input', {
+                className: 'input', value: search,
+                onChange: (e) => setSearch(e.target.value),
+                placeholder: 'Search instructors by name or ID',
+                autoComplete: 'off', autoFocus: true, spellCheck: false, type: 'search', name: 'search', inputMode: 'search',
+                onKeyDown: (e) => { if (e.key === 'Enter') e.preventDefault(); },
+                style: { width: '100%' }
+              }),
+              // suggestions removed for simple search
+            ]),
+          ]);
+        }
+
+        // Removed datalist approach in favor of a stable custom suggestion box
+
+        function CustomSelect(props) {
+          const { name, placeholder, options = [], required, defaultValue, multiple } = props || {};
+          const [open, setOpen] = React.useState(false);
+          const [value, setValue] = React.useState(() => {
+            if (multiple) {
+              if (Array.isArray(defaultValue)) return defaultValue;
+              if (defaultValue && typeof defaultValue === 'string') return defaultValue.split(',').map(s=>s.trim()).filter(Boolean);
+              return [];
+            }
+            return defaultValue || '';
+          });
+          function toggle(v) {
+            if (!multiple) { setValue(v); setOpen(false); return; }
+            const arr = Array.isArray(value) ? value.slice() : [];
+            const idx = arr.indexOf(v);
+            if (idx >= 0) arr.splice(idx, 1); else arr.push(v);
+            setValue(arr);
+          }
+          const displayText = multiple ? (Array.isArray(value) && value.length ? value.join(', ') : (placeholder || '')) : (value || placeholder || '');
+          const hiddenValue = multiple ? JSON.stringify(Array.isArray(value) ? value : []) : (value || '');
+          return React.createElement('div', { style: { width: '94%', margin: '0 auto' } }, [
+            React.createElement('input', { key: 'hidden', type: 'text', name, value: hiddenValue, required, style: { display: 'none' } }),
+            React.createElement('button', { key: 'btn', type: 'button', className: 'input', onClick: () => setOpen(true), style: { width: '100%', textAlign: 'center' } }, displayText),
+            open ? React.createElement('div', { key: 'overlay', style: { position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.55)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 100, padding: '1rem' }, onClick: () => setOpen(false) }, [
+              React.createElement('div', { key: 'box', style: { position: 'relative', width: 'min(80vw, 360px)', maxHeight: '70vh', overflowY: 'auto', background: 'var(--surface-alpha)', borderRadius: 12, boxShadow: '0 20px 40px rgba(0,0,0,0.25)', padding: '0.75rem', paddingTop: '2rem' }, onClick: e => e.stopPropagation() }, [
+                React.createElement('span', { key: 'x', onClick: () => setOpen(false), style: { position: 'absolute', top: 8, right: 8, cursor: 'pointer', fontSize: 18, lineHeight: 1 } }, '×'),
+                React.createElement('div', { key: 'ph', style: { fontWeight: 700, textAlign: 'center', marginBottom: '0.5rem' } }, placeholder || ''),
+                React.createElement('div', { key: 'list', style: { display: 'grid', gap: '0.5rem' } }, options.map(opt => {
+                  const selected = multiple ? (Array.isArray(value) && value.includes(opt)) : (value === opt);
+                  const label = selected ? `✅ ${opt}` : opt;
+                  return React.createElement('button', { key: opt, type: 'button', className: 'role-button', onClick: () => toggle(opt), style: { width: '100%', textAlign: 'center' } }, label);
+                }))
+              ])
+            ]) : null
+          ]);
+        }
+
+        function SectionsMulti(props){
+          const idNumber = props.idNumber;
+          const [codes, setCodes] = React.useState([]);
+          const [options, setOptions] = React.useState([]);
+          function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+          React.useEffect(()=>{ (async()=>{ try { const rc = await fetch('/api/sections/catalog', { headers: authHeaders() }); const jc = await rc.json(); const opts = (rc.ok && jc.ok && Array.isArray(jc.data)) ? jc.data.map(s=>s.code) : []; setOptions(opts); } catch {} try { const r = await fetch(`/api/instructor/${encodeURIComponent(idNumber)}/sections`, { headers: authHeaders() }); const j = await r.json(); const arr = (r.ok && j.ok && Array.isArray(j.data)) ? j.data.map(s=>s.code) : []; setCodes(arr); } catch {} })(); }, [idNumber]);
+          return React.createElement(CustomSelect, { name: 'sections', multiple: true, placeholder: 'Assign Course & Section(s)', options: options, defaultValue: codes, required: true });
+        }
+
+        function SectionsChooser(props){
+          const name = 'sections';
+          const [options, setOptions] = React.useState([]);
+          function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+          React.useEffect(()=>{ (async()=>{ try { const r0 = await fetch('/api/sections/catalog', { headers: authHeaders() }); const j0 = await r0.json(); const opts = (r0.ok && j0.ok && Array.isArray(j0.data)) ? j0.data.map(s=>s.code) : []; setOptions(opts); } catch {} })(); }, []);
+          return React.createElement(CustomSelect, { name, multiple: true, placeholder: 'Assign Course & Section(s)', options: options, required: true });
+        }
+
+
+
+        function AddModal() {
+          if (!showAdd) return null;
+          const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.55)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 50, padding: '1rem', minHeight: '100dvh', overscrollBehavior: 'contain' };
+          const modalStyle = { width: 'min(88vw, 520px)', maxHeight: '80vh', overflowY: 'auto', background: 'var(--surface-alpha)', borderRadius: 12, boxShadow: '0 20px 40px rgba(0,0,0,0.25)', padding: '1rem', margin: 0, boxSizing: 'border-box' };
+          function submit(e) { addUser(e); }
+          function close() { setShowAdd(false); }
+          React.useEffect(() => {
+            function onKey(e) { if (e.key === 'Escape') setShowAdd(false); }
+            window.addEventListener('keydown', onKey);
+            return () => window.removeEventListener('keydown', onKey);
+          }, []);
+          React.useEffect(() => {
+            const prev = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            return () => { document.body.style.overflow = prev; };
+          }, []);
+          return React.createElement('div', { key: 'overlay', style: overlayStyle, onClick: close }, [
+            React.createElement('div', { key: 'modal', style: { ...modalStyle, textAlign: 'center', position: 'relative' }, onClick: e => e.stopPropagation(), role: 'dialog', 'aria-modal': true }, [
+              null,
+              React.createElement('div', { key: 'content', style: { width: 'min(86vw, 480px)', margin: '0 auto' } }, [
+                React.createElement('form', { key: 'form', className: 'form', onSubmit: submit, style: { display: 'grid', gap: '0.75rem', justifyItems: 'center', textAlign: 'center', marginTop: 0, width: '100%' } }, [
+                  React.createElement('input', { key: 'id', className: 'input', name: 'idNumber', placeholder: 'ID Number', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'pass', className: 'input', name: 'password', placeholder: 'Password', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'firstName', className: 'input', name: 'firstName', placeholder: 'First Name', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'middleName', className: 'input', name: 'middleName', placeholder: 'Middle Name', style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'lastName', className: 'input', name: 'lastName', placeholder: 'Last Name', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement(SectionsChooser, { key: 'sections' }),
+                  React.createElement('div', { key: 'actions', className: 'buttons', style: { display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem', justifyItems: 'center', width: '100%', margin: 0 } }, [
+                    React.createElement('button', { key: 'add', className: 'role-button', type: 'submit', style: { width: '94%', margin: '0 auto', textAlign: 'center' } }, 'Add Instructor'),
+                    React.createElement('button', { key: 'cancel', className: 'role-button', type: 'button', onClick: close, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }, 'Cancel')
+                  ])
+                ])
+              ])
+            ])
+          ]);
+        }
+
+        function ModalEdit() {
+          if (!editing) return null;
+
+          React.useEffect(() => {
+            function onKey(e) { if (e.key === 'Escape') setEditing(null); }
+            window.addEventListener('keydown', onKey);
+            return () => window.removeEventListener('keydown', onKey);
+          }, [editing]);
+
+          function submit(e) {
+            e.preventDefault();
+            const f = e.currentTarget;
+            const payload = {
+              firstName: (f.firstName?.value || '').trim(),
+              middleName: (f.middleName?.value || '').trim(),
+              lastName: (f.lastName?.value || '').trim(),
+              course: null,
+              password: (f.password?.value || '').trim() || undefined
+            };
+            if (!payload.firstName || !payload.lastName) { alert('First and Last are required'); return; }
+            updateUser(editing.idNumber, payload).then(async () => {
+              try {
+                const arr = JSON.parse(f.sections?.value || '[]');
+                if (Array.isArray(arr) && arr.length) {
+                  const sectionIds = arr.map(c => Number(sectionIndex[String(c)] || 0)).filter(x=>x);
+                  const codes = arr.map(c => String(c).replace(' ', '-'));
+                  const r1 = await fetch(`/api/instructor/${encodeURIComponent(editing.idNumber)}/sections/assign`, { method: 'POST', headers: authHeaders(true), body: JSON.stringify({ codes }) });
+                  const j1 = await r1.json().catch(()=>({ok:false,error:'Failed'}));
+                  if (!r1.ok || !j1.ok) { alert(j1.error || 'Failed to assign sections'); }
+                  const addCourses = Array.from(new Set(arr.map(c => { const s=String(c); const hy=s.split('-')[0]; const sp=s.split(' ')[0]; return String(hy||sp||'').trim(); }).filter(Boolean)));
+                  if (addCourses.length) {
+                    const courseIds = addCourses.map(c => Number(courseIndex[String(c)] || 0)).filter(x=>x);
+                    const r2 = await fetch(`/api/instructor/${encodeURIComponent(editing.idNumber)}/courses/assign`, { method: 'POST', headers: authHeaders(true), body: JSON.stringify({ courseIds }) });
+                    const j2 = await r2.json().catch(()=>({ok:false,error:'Failed'}));
+                    if (!r2.ok || !j2.ok) { alert(j2.error || 'Failed to assign courses'); }
+                  }
+                }
+              } catch {}
+              setEditing(null);
+            });
+          }
+
+          const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 0 };
+          const modalStyle = { width: 'min(92vw, 560px)', background: 'var(--surface-alpha)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', padding: '1rem', boxSizing: 'border-box', margin: 0 };
+
+          return React.createElement('div', { key: 'overlay', style: overlayStyle, onClick: () => setEditing(null) }, [
+            React.createElement('div', { key: 'modal', style: { ...modalStyle, textAlign: 'center', position: 'relative', overflow: 'hidden' }, onClick: e => e.stopPropagation() }, [
+              React.createElement('div', { key: 'head', style: { display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.5rem' } }, [
+                React.createElement('div', { key: 'title', style: { fontWeight: 700 } }, `Edit Instructor (${editing.idNumber})`)
+              ]),
+              React.createElement('div', { key: 'content', style: { width: '100%', margin: '0 auto' } }, [
+                React.createElement('form', { key: 'form', className: 'form', onSubmit: submit, style: { display: 'grid', gap: '0.75rem', justifyItems: 'center', textAlign: 'center', marginTop: 0, width: '100%' } }, [
+                  React.createElement('input', { key: 'firstName', className: 'input', name: 'firstName', defaultValue: editing.firstName || '', placeholder: 'First Name', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'middleName', className: 'input', name: 'middleName', defaultValue: editing.middleName || '', placeholder: 'Middle Name', style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'lastName', className: 'input', name: 'lastName', defaultValue: editing.lastName || '', placeholder: 'Last Name', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement(SectionsMulti, { key: 'sectionsMulti', idNumber: editing.idNumber }),
+                  React.createElement('input', { key: 'password', className: 'input', name: 'password', type: 'password', placeholder: 'New Password (optional)', style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                React.createElement('div', { key: 'actions', className: 'buttons', style: { display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem', justifyItems: 'center', width: '100%', margin: 0 } }, [
+                  React.createElement('button', { key: 'save', className: 'role-button', type: 'submit', style: { width: '94%', margin: '0 auto', textAlign: 'center' } }, 'Save Changes'),
+                  React.createElement('button', { key: 'cancel', className: 'role-button', type: 'button', onClick: () => setEditing(null), style: { width: '94%', margin: '0 auto', textAlign: 'center' } }, 'Cancel')
+                ])
+                ])
+              ])
+            ])
+          ]);
+        }
+
+        function DeleteConfirm(){
+          if(!toDelete) return null;
+          React.useEffect(()=>{ function onKey(e){ if(e.key==='Escape') setToDelete(null); } window.addEventListener('keydown', onKey); return ()=>window.removeEventListener('keydown', onKey); },[toDelete]);
+          const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 0 };
+          const modalStyle = { width: 'min(92vw, 560px)', background: 'var(--surface-alpha)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', padding: '1rem', boxSizing: 'border-box', margin: 0 };
+          function confirmDelete(){ deleteUser(toDelete).then(()=>setToDelete(null)); }
+          function close(){ setToDelete(null); }
+          return React.createElement('div',{ key:'overlay', style: overlayStyle, onClick: close },[
+            React.createElement('div',{ key:'modal', style:{ ...modalStyle, textAlign:'center', position:'relative' }, onClick:e=>e.stopPropagation() },[
+              React.createElement('div',{ key:'title', style:{ fontWeight:700, marginBottom:'0.5rem' } },'Are you sure you want to delete this user?'),
+              React.createElement('div',{ key:'actions', className:'buttons', style:{ display:'grid', gridTemplateColumns:'1fr', gap:'0.5rem', justifyItems:'center', width:'100%' } },[
+                React.createElement('button',{ key:'yes', className:'role-button danger', type:'button', onClick: confirmDelete, style:{ width:'94%', margin:'0 auto', textAlign:'center' } },'Delete'),
+                React.createElement('button',{ key:'no', className:'role-button', type:'button', onClick: close, style:{ width:'94%', margin:'0 auto', textAlign:'center' } },'Cancel')
+              ])
+            ])
+          ]);
+        }
+
+        return React.createElement('main', { className: 'container centered' }, [
+          React.createElement('div', { key: 'wrap', className: 'dashboard-main center-page' }, [
+            React.createElement('h1', { key: 't', className: 'title' }, 'OJTonTrack'),
+            React.createElement('p', { key: 'sub', className: 'subtitle' }, 'User Management – Instructors'),
+            React.createElement(Toolbar, { key: 'toolbar' }),
+            error ? React.createElement('p', { key: 'err', style: { color: '#b91c1c', fontWeight: 600 } }, error) : null,
+            React.createElement(ModalEdit, { key: 'editModal' }),
+            React.createElement(DeleteConfirm, { key: 'deleteConfirm' }),
+            React.createElement(AddModal, { key: 'addModal' }),
+            // Scrollable container for large lists
+            React.createElement('div', {
+            key: 'scrollbox',
+            style: {
+              width: 'min(92vw, 560px)',
+              margin: '0 auto',
+              maxHeight: '60vh',
+              minHeight: '320px',
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              border: '2px solid #d1d5db',
+              borderRadius: 10,
+              padding: '0.75rem',
+                  background: 'var(--surface-alpha)'
+            }
+          }, [
+              React.createElement(List, { key: 'list' })
+            ]),
+            React.createElement('button', { key: 'fab', className: 'role-button fab', onClick: () => setShowAdd(true), style: { background:'#111827', color:'#fff' } }, React.createElement('svg',{xmlns:'http://www.w3.org/2000/svg',viewBox:'0 0 24 24',fill:'none',stroke:'#fff','stroke-width':2,'stroke-linecap':'round','stroke-linejoin':'round'},[React.createElement('path',{d:'M12 5v14'}),React.createElement('path',{d:'M5 12h14'})])),
+            React.createElement('div', { key: 'actions', className: 'buttons', style: { width: 'min(92vw, 560px)', margin: '1rem auto 0', display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem', justifyItems: 'stretch' } }, [
+              React.createElement('button', { key: 'openAdd', className: 'role-button', onClick: () => setShowAdd(true), style: { width: '100%' } }, 'Add User'),
+              React.createElement('a', { key: 'catalog', className: 'role-button', href: '/admin/sections-catalog.html', style: { width: '100%' } }, 'Sections Catalog'),
+              React.createElement('a', { key: 'back', className: 'role-button', href: '/admin/users-all.html', style: { width: '100%' } }, 'Back')
+            ])
+          ])
+        ]);
+      }
+      try {
+        if (!window.React || !window.ReactDOM) {
+          bootFallback('React not available');
+        } else {
+          const root = ReactDOM.createRoot(document.getElementById('root'));
+          root.render(React.createElement(Page));
+        }
+      } catch (err) {
+        bootFallback('Error: ' + (err && err.message ? err.message : 'Unknown'));
+      }
+</script>
+  </body>
+</html>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="490" height="1024" viewBox="0 0 490 1024">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe9cc"/>
+      <stop offset="40%" stop-color="#ffe0b8"/>
+      <stop offset="100%" stop-color="#ffe0b8"/>
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f6a423"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="redGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff5a49"/>
+      <stop offset="100%" stop-color="#e64a2f"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="490" height="1024" rx="36" fill="url(#bgGrad)"/>
+
+  <path d="M0 240 C120 210 370 270 490 240 L490 410 L0 410 Z" fill="#ffd79b" opacity="0.45"/>
+  <path d="M0 300 C140 270 350 330 490 300 L490 460 L0 460 Z" fill="#ffc878" opacity="0.35"/>
+  <path d="M0 360 C120 335 370 385 490 360 L490 520 L0 520 Z" fill="#fbbf24" opacity="0.28"/>
+  <path d="M0 420 C150 395 340 445 490 420 L490 570 L0 570 Z" fill="#f6a423" opacity="0.22"/>
+
+  <path d="M0 540 Q245 420 490 540 L490 820 L0 820 Z" fill="url(#orangeGrad)"/>
+
+  <path d="M0 700 Q245 580 490 700 L490 1024 L0 1024 Z" fill="url(#redGrad)"/>
+  <path d="M0 780 C120 740 370 820 490 780 L490 1024 L0 1024 Z" fill="#ff6b57" opacity="0.45"/>
+  <path d="M0 860 C140 820 350 900 490 860 L490 1024 L0 1024 Z" fill="#e64a2f" opacity="0.35"/>
+</svg>

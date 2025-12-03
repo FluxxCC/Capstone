@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack — Weekly Reports</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container centered">
+      <div class="dashboard-main center-page">
+        <h2 class="welcome">Weekly Reports</h2>
+        <div class="attendance-card">
+          <div class="cam-header" style="margin-bottom:8px">
+            <span class="stat-label">Text Editor</span>
+            <button id="editorOpen" class="role-button" style="width:auto;padding:0.6rem 0.9rem;background:var(--surface-alpha)">Open Editor</button>
+          </div>
+        </div>
+        <div class="attendance-card" style="margin-top:12px">
+          <div class="cam-header" style="margin-bottom:8px">
+            <span class="stat-label">File Upload</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px">
+            <input id="topFileInput" type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain" style="display:none" />
+            <div id="topFilesInfo" class="subtitle" style="grid-column:1/-1;margin-top:4px;text-align:left"></div>
+            <div id="uploadProgressWrap" style="grid-column:1/-1;display:none;width:94%;margin:6px auto">
+              <div style="height:8px;background:#e5e7eb;border-radius:9999px;overflow:hidden">
+                <div id="uploadProgressFill" style="width:0;height:8px;background:#3b82f6"></div>
+              </div>
+              <div id="uploadProgressText" class="subtitle" style="text-align:center;margin-top:4px"></div>
+            </div>
+            <button id="topSubmitBtn" class="role-button primary" type="button" style="width:100%;text-align:center;background:var(--surface-alpha)">Submit</button>
+            <button id="topChooseBtn" class="role-button" type="button" style="width:40px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;border:1px solid #d1d5db;border-radius:8px;background:var(--surface-alpha);color:#6b7280">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" stroke="currentColor"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v11"/></svg>
+            </button>
+          </div>
+        </div>
+        
+        
+        <div class="buttons" style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+          <button id="draftsBtn" class="role-button" style="width:100%">Drafts</button>
+          <button id="reportsLogsBtn" class="role-button" style="width:100%">Reports Logs</button>
+        </div>
+      </div>
+    </main>
+    <div id="editorModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:#fff;padding:16px;border-radius:12px;width:clamp(320px,80vw,720px);max-height:85vh;display:flex;flex-direction:column;gap:10px;position:relative">
+        <div style="display:flex;justify-content:center;margin-bottom:8px">
+          <button id="editorClose" class="role-button" style="padding:6px 12px">Close</button>
+        </div>
+        <input id="title" type="text" placeholder="Title" style="width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#fff" />
+        <div id="editor" contenteditable="true" style="min-height:200px;border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#fff"></div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center;width:100%">
+          <button id="saveBtn" class="role-button" style="width:100%;max-width:560px;margin:0 auto;text-align:center;background:var(--surface-alpha)">Save to Drafts</button>
+          <button id="submitBtn" class="role-button primary" style="width:100%;max-width:560px;margin:0 auto;text-align:center;background:var(--surface-alpha)">Submit</button>
+        </div>
+        
+      </div>
+    </div>
+    <div id="confirmSubmitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:#fff;padding:16px;border-radius:12px;width:clamp(280px,80vw,420px);display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center">
+        <div class="title">Do you want to submit this report?</div>
+        <div class="buttons" style="display:flex;gap:8px;justify-content:center;width:100%">
+          <button id="confirmSubmitNo" class="role-button" style="min-width:100px">Cancel</button>
+          <button id="confirmSubmitYes" class="role-button primary" style="min-width:100px">Submit</button>
+        </div>
+      </div>
+    </div>
+    <div id="studentCommentModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:#fff;padding:16px;border-radius:12px;width:clamp(320px,80vw,720px);max-height:85vh;display:flex;flex-direction:column;gap:10px">
+        <div id="studentCommentList" class="recent-scroll small" style="max-height:60vh;overflow-y:auto"></div>
+        <button id="studentCommentClose" class="role-button" style="padding:6px 12px">Close</button>
+      </div>
+    </div>
+    <nav class="student-nav">
+      <div class="student-nav-inner">
+        <a href="/student/dashboard.html" aria-label="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7"/><path d="M5 11v9h14v-9"/></svg>
+        </a>
+        <a href="/student/DTR.html" aria-label="Attendance">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </a>
+        <a href="/student/reports.html" class="active" aria-label="Reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 012-2h10"/><path d="M20 7v12a2 2 0 01-2 2H6"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h6"/></svg>
+        </a>
+        <a href="/student/profile.html" aria-label="Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/config.js"></script>
+    <script>
+      function authHeaders(json=false){ const t=sessionStorage.getItem('userToken'); const h=t?{ Authorization:'Bearer '+t }:{}; return json?{ 'Content-Type':'application/json', ...h }:h; }
+      let files = [];
+      let busy = false;
+      let currentDraftId = '';
+      function toDataUrl(file) { return new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file); }); }
+      async function ensureAuth() { const r = await fetch('/api/me'); if (!r.ok) { window.location.replace('/index.html'); throw new Error('auth'); } return r.json(); }
+      async function loadRecent(all) {
+        const box = document.getElementById('recentBox');
+        box.innerHTML = '';
+        for (let i=0;i<3;i++){ const sk=document.createElement('div'); sk.className='skeleton-card'; const l1=document.createElement('div'); l1.className='skeleton-line'; l1.style.width='60%'; const l2=document.createElement('div'); l2.className='skeleton-line'; l2.style.width='40%'; l2.style.marginTop='8px'; sk.appendChild(l1); sk.appendChild(l2); box.appendChild(sk); }
+        try {
+          try { const me=await ensureAuth(); const meId=String(me.data?.id_number||me.data?.idNumber||''); const c=JSON.parse(sessionStorage.getItem('rep:recent:'+meId)||'[]'); if(Array.isArray(c)&&c.length){ box.innerHTML=''; const rows=c.filter(x=>!/draft/i.test(String(x.status||''))); rows.sort((a,b)=>Number(b.ts||0)-Number(a.ts||0)); rows.forEach(x=>{ const when = new Date(x.ts).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); const line = document.createElement('div'); const status = String(x.status || '').replace('_', ' '); const title = (String(x.title || '').trim() || '(No title)'); const left = document.createElement('div'); left.textContent = `${title} — Submitted on ${when} (${status || 'submitted'})`; const right = document.createElement('div'); right.style.display='flex'; right.style.alignItems='center'; const btn=document.createElement('button'); btn.className='role-button'; btn.type='button'; btn.style.width='32px'; btn.style.height='32px'; btn.style.padding='0'; btn.style.display='flex'; btn.style.alignItems='center'; btn.style.justifyContent='center'; btn.style.border='1px solid #d1d5db'; btn.style.borderRadius='8px'; btn.style.background='#fff'; btn.style.color='#6b7280'; btn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 01-4 4H7l-4 4V7a4 4 0 014-4h10a4 4 0 014 4v8z"/></svg>'; const s=btn.querySelector('svg'); if(s){ s.setAttribute('width','20'); s.setAttribute('height','20'); s.setAttribute('stroke','currentColor'); } const badge=document.createElement('span'); badge.style.display='none'; badge.style.position='absolute'; badge.style.width='10px'; badge.style.height='10px'; badge.style.background='#ef4444'; badge.style.borderRadius='50%'; btn.style.position='relative'; badge.style.top='-4px'; badge.style.right='-4px'; btn.appendChild(badge); btn.addEventListener('click', function(){ openCommentsFor(x.id, badge); }); right.appendChild(btn); const item=document.createElement('div'); item.style.display='grid'; item.style.gridTemplateColumns='1fr auto'; item.style.alignItems='center'; item.appendChild(left); item.appendChild(right); box.appendChild(item); }); } } catch {}
+          const rr = await fetch('/api/reports/recent' + (all ? '?all=1' : ''));
+          const jj = await rr.json();
+          let rows = rr.ok && jj.ok ? (Array.isArray(jj.data) ? jj.data : []) : [];
+          rows = rows.filter(x => !/draft/i.test(String(x.status || '')));
+          
+          if (!rows.length) { box.innerHTML = '<div class="empty">No activity yet</div>'; return; }
+          box.innerHTML = '';
+          rows.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
+          async function openCommentsFor(id, badgeEl){ const m=document.getElementById('studentCommentModal'); const list=document.getElementById('studentCommentList'); list.innerHTML=''; try{ const r=await fetch(`/api/reports/${encodeURIComponent(String(id||''))}/comments`, { headers: authHeaders() }); const j=await r.json(); const rows=(r.ok&&j.ok&&Array.isArray(j.data))?j.data:[]; list.innerHTML=''; rows.forEach(c=>{ const line=document.createElement('div'); line.textContent=String(c.text||''); list.appendChild(line); }); } catch { list.innerHTML=''; } try{ await fetch(`/api/reports/${encodeURIComponent(String(id||''))}/comments/read`, { method:'POST', headers: authHeaders(true) }); if (badgeEl) badgeEl.style.display='none'; try { sessionStorage.setItem('rep:dismissed:'+String(id||''), '1'); } catch {} } catch {} m.style.display='flex'; }
+          rows.forEach(x => {
+            const d = new Date(x.ts);
+            const date = d.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' });
+            const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' });
+            const wrap = document.createElement('div'); wrap.className = 'list-card';
+            const title = document.createElement('div'); title.className = 'title'; title.textContent = String(x.title||'').trim() || '(No title)';
+            const status = String(x.status || '').replace('_',' ');
+            const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = `${date} • ${time}`;
+            const pill = document.createElement('span'); pill.className = 'status-pill '+((status||'submitted').toLowerCase()==='submitted'?'status-submitted':'status-submitted');
+            const label = String(status||'submitted').replace(/\b\w/g,function(c){ return c.toUpperCase(); });
+            pill.textContent = label; meta.appendChild(pill);
+            const actions = document.createElement('div'); actions.className = 'actions';
+            const btn = document.createElement('button');
+            btn.className = 'role-button neutral';
+            btn.type = 'button';
+            btn.style.width = '32px';
+            btn.style.height = '32px';
+            btn.style.padding = '0';
+            btn.style.display = 'flex';
+            btn.style.alignItems = 'center';
+            btn.style.justifyContent = 'center';
+            btn.style.border = '1px solid #d1d5db';
+            btn.style.borderRadius = '8px';
+            btn.style.background = '#fff';
+            btn.style.color = '#6b7280';
+            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 01-4 4H7l-4 4V7a4 4 0 014-4h10a4 4 0 014 4v8z"/></svg>';
+            const s = btn.querySelector('svg'); if (s) { s.setAttribute('width','20'); s.setAttribute('height','20'); s.setAttribute('stroke','currentColor'); }
+            const badge = document.createElement('span');
+            badge.style.display = 'none';
+            badge.style.position = 'absolute';
+            badge.style.width = '10px';
+            badge.style.height = '10px';
+            badge.style.background = '#ef4444';
+            badge.style.borderRadius = '50%';
+            btn.style.position = 'relative';
+            badge.style.top = '-4px';
+            badge.style.right = '-4px';
+            btn.appendChild(badge);
+            btn.addEventListener('click', function(){ openCommentsFor(x.id, badge); });
+            actions.appendChild(btn);
+            const who = document.createElement('div'); who.className = 'meta'; who.textContent = 'Commented by —';
+            wrap.appendChild(title);
+            wrap.appendChild(meta);
+            wrap.appendChild(actions);
+            wrap.appendChild(who);
+            box.appendChild(wrap);
+            (async function(){ try { const ur = await fetch(`/api/reports/${encodeURIComponent(String(x.id||''))}/comments`, { headers: authHeaders() }); const uj = await ur.json(); const rows = ur.ok && uj && Array.isArray(uj.data) ? uj.data : []; if (rows.length) { const first = rows[rows.length-1] || rows[0]; const nm = String(first?.author || first?.userName || first?.name || 'Instructor'); who.textContent = 'Commented by ' + nm; } else { who.textContent = 'No comments yet'; } } catch { who.textContent = 'No comments yet'; } })();
+            (async function(){ try { if (sessionStorage.getItem('rep:dismissed:'+String(x.id||''))) { badge.style.display='none'; return; } } catch {} try{ const ur = await fetch(`/api/reports/${encodeURIComponent(String(x.id||''))}/comments/unread`, { headers: authHeaders() }); const uj = await ur.json(); const c = (ur.ok && uj.ok) ? Number(uj.count||0) : 0; badge.style.display = c > 0 ? 'block' : 'none'; } catch { badge.style.display = 'none'; } })();
+          });
+          try { const me=await ensureAuth(); const meId=String(me.data?.id_number||me.data?.idNumber||''); sessionStorage.setItem('rep:recent:'+meId, JSON.stringify(rows.slice(0,50))); } catch {}
+        } catch { box.innerHTML = '<div class="empty">No activity yet</div>'; }
+      }
+      async function loadDrafts(){ return; }
+      function beginEdit(d) {
+        currentDraftId = String(d.id || '');
+        document.getElementById('title').value = String(d.title || '');
+        document.getElementById('editor').innerHTML = String(d.text || '');
+        const sb = document.getElementById('saveBtn');
+        sb.textContent = 'Save changes';
+        try { const em = document.getElementById('editorModal'); if (em) em.style.display = 'flex'; } catch {}
+      }
+      async function submitDraft(id) {
+        if (!id) return; try {
+          const r = await fetch('/api/reports/submit', { method: 'POST', headers: authHeaders(true), body: JSON.stringify({ id }) });
+          const j = await r.json();
+          if (r.ok && j.ok) { loadDrafts(); } else { alert(j.error || 'Failed'); }
+        } catch { alert('Network error'); }
+      }
+      async function deleteDraft(id) {
+        if (!id) return; try {
+          const r = await fetch(`/api/reports/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders() });
+          const j = await r.json();
+          if (r.ok && j.ok) { loadDrafts(); } else { alert(j.error || 'Failed'); }
+        } catch { alert('Network error'); }
+      }
+      document.addEventListener('DOMContentLoaded', async function() {
+        try { await ensureAuth(); } catch { return; }
+        loadDrafts();
+        const reportsLogsBtn = document.getElementById('reportsLogsBtn');
+        if (reportsLogsBtn) reportsLogsBtn.addEventListener('click', function(){ window.location.href = '/student/reports-all.html'; });
+        const draftsBtn = document.getElementById('draftsBtn');
+        if (draftsBtn) draftsBtn.addEventListener('click', function(){ window.location.href = '/student/drafts.html'; });
+        
+        const sm=document.getElementById('studentCommentModal');
+        const sc=document.getElementById('studentCommentClose');
+        sm.addEventListener('click', function(e){ if (e.target===sm) sm.style.display='none'; });
+        sc.addEventListener('click', function(){ sm.style.display='none'; });
+        const editor = document.getElementById('editor');
+        const saveBtn = document.getElementById('saveBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const editorModal = document.getElementById('editorModal');
+        const editorOpen = document.getElementById('editorOpen');
+        const editorClose = document.getElementById('editorClose');
+        editorOpen.addEventListener('click', function(){ editorModal.style.display='flex'; });
+        editorClose.addEventListener('click', function(){ editorModal.style.display='none'; });
+        editorModal.addEventListener('click', function(e){ if (e.target===editorModal) editorModal.style.display='none'; });
+        const viewAllEl = document.getElementById('viewAll');
+        if (viewAllEl) viewAllEl.addEventListener('click', function(e) { e.preventDefault(); window.location.href = '/student/reports-all.html'; });
+        const topChooseBtn = document.getElementById('topChooseBtn');
+        const topFileInput = document.getElementById('topFileInput');
+        const topFilesInfo = document.getElementById('topFilesInfo');
+        const topSubmitBtn = document.getElementById('topSubmitBtn');
+        const upWrap = document.getElementById('uploadProgressWrap');
+        const upFill = document.getElementById('uploadProgressFill');
+        const upText = document.getElementById('uploadProgressText');
+        if (topChooseBtn) topChooseBtn.addEventListener('click', function(){ topFileInput.click(); });
+        if (topFileInput) topFileInput.addEventListener('change', function(){ files = Array.from(topFileInput.files || []).filter(function(f){ return !/^image\//.test(String(f.type||'')); }).slice(0,5); const names = files.map(function(f){ return `${f.name} (${Math.round((f.size||0)/1024)}KB)`; }); topFilesInfo.textContent = names.length ? names.join(', ') : ''; });
+        function openConfirmSubmit(){ const m=document.getElementById('confirmSubmitModal'); if (m) m.style.display='flex'; }
+        function closeConfirmSubmit(){ const m=document.getElementById('confirmSubmitModal'); if (m) m.style.display='none'; }
+        if (topSubmitBtn) topSubmitBtn.addEventListener('click', function(){ openConfirmSubmit(); });
+        function postJsonWithProgress(url, method, body, onProgress){ return new Promise(function(resolve, reject){ try{ const xhr = new XMLHttpRequest(); xhr.open(method, url, true); xhr.setRequestHeader('Content-Type','application/json'); const t=sessionStorage.getItem('userToken'); if (t) xhr.setRequestHeader('Authorization','Bearer '+t); if (xhr.upload && typeof onProgress==='function') { xhr.upload.onprogress = function(e){ try{ const tot = e.lengthComputable ? e.total : (e.loaded || 1); onProgress(e.loaded||0, tot||1); } catch {} }; } xhr.onreadystatechange = function(){ if (xhr.readyState===4) { resolve({ ok: xhr.status>=200 && xhr.status<300, json: async function(){ try { return JSON.parse(xhr.responseText||'{}'); } catch { return {}; } } }); } }; xhr.onerror = function(){ reject(new Error('network')); }; xhr.send(JSON.stringify(body||{})); } catch { reject(new Error('network')); } }); }
+        
+        async function send(action) {
+          if (busy) return; busy = true; if (saveBtn) saveBtn.disabled = true; submitBtn.disabled = true;
+          try {
+            const payloadFiles = [];
+            for (const f of files) {
+              if ((f.size||0) > 4*1024*1024) continue;
+              const du = await toDataUrl(f);
+              payloadFiles.push({ name: f.name, type: f.type, size: f.size, dataUrl: du });
+            }
+            let r;
+            const useProgress = payloadFiles.length > 0;
+            function showProgress(){ if (upWrap) { upWrap.style.display='block'; if (upFill) upFill.style.width='0%'; if (upText) upText.textContent='Uploading 0%'; } }
+            function updateProgress(loaded,total){ const pct = Math.max(0, Math.min(100, Math.round(100 * (total? (loaded/total) : 0)))); if (upFill) upFill.style.width = pct + '%'; if (upText) upText.textContent = 'Uploading ' + pct + '%'; }
+            function hideProgress(){ if (upWrap) { upWrap.style.display='none'; if (upFill) upFill.style.width='0%'; if (upText) upText.textContent=''; } }
+            if (action === 'save' && currentDraftId) {
+              if (useProgress) { showProgress(); r = await postJsonWithProgress(`/api/reports/${encodeURIComponent(currentDraftId)}`, 'PUT', { title: document.getElementById('title').value, text: editor.innerHTML, files: payloadFiles }, updateProgress); } else { r = await fetch(`/api/reports/${encodeURIComponent(currentDraftId)}`, { method: 'PUT', headers: authHeaders(true), body: JSON.stringify({ title: document.getElementById('title').value, text: editor.innerHTML, files: payloadFiles }) }); }
+            } else if (action === 'submit' && currentDraftId) {
+              if (useProgress) { showProgress(); try { await postJsonWithProgress(`/api/reports/${encodeURIComponent(currentDraftId)}`, 'PUT', { title: document.getElementById('title').value, text: editor.innerHTML, files: payloadFiles }, updateProgress); } catch {} } else { try { await fetch(`/api/reports/${encodeURIComponent(currentDraftId)}`, { method: 'PUT', headers: authHeaders(true), body: JSON.stringify({ title: document.getElementById('title').value, text: editor.innerHTML, files: payloadFiles }) }); } catch {} }
+              r = await fetch('/api/reports/submit', { method: 'POST', headers: authHeaders(true), body: JSON.stringify({ id: currentDraftId }) });
+            } else {
+              if (useProgress) { showProgress(); r = await postJsonWithProgress('/api/reports', 'POST', { action, title: document.getElementById('title').value, text: editor.innerHTML, files: payloadFiles }, updateProgress); } else { r = await fetch('/api/reports', { method: 'POST', headers: authHeaders(true), body: JSON.stringify({ action, title: document.getElementById('title').value, text: editor.innerHTML, files: payloadFiles }) }); }
+            }
+            let j = {};
+            try { j = await r.json(); } catch {}
+            if (r.ok && j.ok) {
+              hideProgress();
+              files = []; const topFI = document.getElementById('topFileInput'); const topInfo = document.getElementById('topFilesInfo'); if (topFI) topFI.value = ''; if (topInfo) topInfo.textContent = '';
+              editor.innerHTML = '';
+              document.getElementById('title').value = '';
+              if (currentDraftId) { currentDraftId = ''; }
+              if (action === 'save') { /* drafts removed */ }
+              else { /* drafts removed */ loadRecent(false); }
+              try { editorModal.style.display = 'none'; } catch {}
+            } else { alert(j.error || 'Failed'); }
+          } catch { alert('Network error'); }
+          hideProgress();
+          busy = false; if (saveBtn) saveBtn.disabled = false; submitBtn.disabled = false;
+        }
+        if (saveBtn) saveBtn.addEventListener('click', function(){ send('save'); });
+        submitBtn.addEventListener('click', function() { openConfirmSubmit(); });
+        (function(){ const m=document.getElementById('confirmSubmitModal'); const yes=document.getElementById('confirmSubmitYes'); const no=document.getElementById('confirmSubmitNo'); if (m && yes && no) { m.addEventListener('click', function(e){ if (e.target===m) closeConfirmSubmit(); }); no.addEventListener('click', function(){ closeConfirmSubmit(); }); yes.addEventListener('click', async function(){ closeConfirmSubmit(); send('submit'); }); } })();
+        try { const me=await ensureAuth(); const idNumber=String(me.data?.id_number||me.data?.idNumber||''); const sb=window.supabase?.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY); if (sb && idNumber) { sb.channel('rep:'+idNumber).on('postgres_changes', { event:'*', schema:'public', table:'reports', filter:'idnumber=eq.'+idNumber }, function(){ loadRecent(false); loadDrafts(); }).on('postgres_changes', { event:'INSERT', schema:'public', table:'report_comments', filter:'idnumber=eq.'+idNumber }, function(payload){ try { const rid = String(payload?.new?.reportid || ''); if (rid) sessionStorage.removeItem('rep:dismissed:'+rid); } catch {} loadRecent(false); }).subscribe(); } } catch {}
+      });
+    </script>
+    <script>
+      (function(){
+        const nav = document.querySelector('.student-nav'); if (!nav) return; nav.classList.add('slideable');
+        let startY=null, lastY=null, moved=0;
+        function start(e){ const t=e.touches?e.touches[0]:e; startY=t.clientY; lastY=startY; moved=0; }
+        function move(e){ const t=e.touches?e.touches[0]:e; lastY=t.clientY; moved=lastY-startY; }
+        function end(){ if (moved>30) { document.body.classList.add('nav-hidden'); } else if (moved<-30) { document.body.classList.remove('nav-hidden'); } else { document.body.classList.toggle('nav-hidden'); } startY=null; lastY=null; moved=0; }
+        nav.addEventListener('touchstart', start, { passive:true });
+        nav.addEventListener('touchmove', move, { passive:true });
+        nav.addEventListener('touchend', end);
+        nav.addEventListener('mousedown', start);
+        nav.addEventListener('mousemove', function(e){ if (startY!==null) move(e); });
+        nav.addEventListener('mouseup', end);
+      })();
+    </script>
+  </body>
+</html>

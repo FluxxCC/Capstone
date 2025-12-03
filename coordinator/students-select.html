@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack — Choose Course</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      function authHeaders(){ const t = sessionStorage.getItem('userToken'); return t ? { Authorization: 'Bearer ' + t } : {}; }
+      async function getMe(){ const r = await fetch('/api/me', { headers: authHeaders() }); const j = await r.json().catch(()=>({})); if(!r.ok){ window.location.replace('/index.html'); throw new Error('auth'); } return j; }
+      function Page(){
+        const [courses, setCourses] = React.useState([]);
+        const [loading, setLoading] = React.useState(true);
+        const [error, setError] = React.useState('');
+        React.useEffect(()=>{ (async()=>{ try { const j = await getMe(); const arr = Array.isArray(j.data?.courses) ? j.data.courses.filter(Boolean) : []; const primary = String(j.data?.course||'').trim(); const merged = Array.from(new Set([primary, ...arr].filter(Boolean))); setCourses(merged); setError(''); } catch { setError('Failed to load'); } finally { setLoading(false); } })(); }, []);
+        function go(code){ if(!code) return; window.location.href = '/coordinator/students.html?course=' + encodeURIComponent(code); }
+        return React.createElement('main', { className: 'container centered' }, [
+          React.createElement('div', { key: 'wrap', className: 'dashboard-main center-page' }, [
+            React.createElement('h1', { key: 't', className: 'title' }, 'OJTonTrack'),
+            React.createElement('p', { key: 'sub', className: 'subtitle' }, 'Coordinator — Choose Course'),
+            loading ? React.createElement('div', { key: 'loading', className: 'buttons' }, [ React.createElement('div', { className: 'skeleton-card' }, [ React.createElement('div', { className: 'skeleton-line', style: { width: '60%' } }), React.createElement('div', { className: 'skeleton-line', style: { width: '40%', marginTop: 8 } }) ]) ]) :
+            (courses.length ? React.createElement('div', { key: 'btns', className: 'buttons', style: { width: 'min(92vw, 560px)', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.5rem' } }, courses.map(c => React.createElement('button', { key: c, className: 'role-button', type: 'button', onClick: ()=>go(c) }, c))) : React.createElement('div', { key: 'empty', className: 'empty' }, 'No assigned courses')),
+            React.createElement('div', { key: 'backwrap', className: 'buttons', style: { width: 'min(92vw, 560px)', marginTop: '1rem' } }, [
+              React.createElement('a', { key: 'back', className: 'role-button', href: '/coordinator/users.html' }, 'Back')
+            ])
+          ])
+        ]);
+      }
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(Page));
+    </script>
+  </body>
+</html>

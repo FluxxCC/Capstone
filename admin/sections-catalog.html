@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OJTonTrack — Sections Catalog</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      function bootFallback(msg){ const el=document.getElementById('root'); el.innerHTML = '<main class="container centered"><h1 class="title">OJTonTrack</h1><p class="subtitle">'+(msg||'')+'</p><a class="role-button" href="/admin/users-all.html">Back</a></main>'; }
+      function Page(){
+        const [error, setError] = React.useState('');
+        const [rows, setRows] = React.useState([]);
+        const [showAdd, setShowAdd] = React.useState(false);
+        function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+        function reload(){ fetch('/api/sections/catalog', { headers: authHeaders() }).then(async r=>{ const j = await r.json().catch(()=>({ ok:false })); if(r.ok && j.ok) { setRows(Array.isArray(j.data)? j.data: []); setError(''); } else setError((j && j.error) || 'Failed to load'); }).catch(()=>setError('Failed to load')); }
+        React.useEffect(()=>{ reload(); },[]);
+        function AddModal(){ if(!showAdd) return null; const overlayStyle = { position:'fixed', inset:0, background:'rgba(2,6,23,0.55)', display:'grid', placeItems:'center', zIndex:60, padding:'1rem' }; const modalStyle = { width:'min(88vw,520px)', background:'var(--surface-alpha)', borderRadius:12, boxShadow:'0 20px 40px rgba(0,0,0,0.25)', padding:'1rem' };
+          function submit(e){ e.preventDefault(); const f=e.currentTarget; const code=String(f.code.value||'').trim(); const name=String(f.name.value||'').trim(); const course=String(f.course.value||'').trim(); const term=String(f.term.value||'').trim()||null; fetch('/api/sections/catalog',{ method:'POST', headers: authHeaders(true), body: JSON.stringify({ code,name,course,term }) }).then(async r=>{ const j=await r.json().catch(()=>({ ok:false })); if(r.ok && j.ok){ setShowAdd(false); reload(); } else alert(j.error||'Failed'); }).catch(()=>alert('Failed')); }
+          function close(){ setShowAdd(false); }
+          return React.createElement('div',{ key:'overlay', style: overlayStyle, onClick: close }, [
+            React.createElement('div',{ key:'modal', style:{ ...modalStyle, textAlign:'center', position:'relative' }, onClick:e=>e.stopPropagation() },[
+              React.createElement('div',{ key:'title', className:'title', style:{ fontSize:18 } },'Add Section'),
+              React.createElement('form',{ key:'form', className:'form', onSubmit: submit, style:{ display:'grid', gap:'0.75rem', justifyItems:'center', width:'100%' } },[
+                React.createElement('input',{ key:'code', className:'input', name:'code', placeholder:'Code (e.g., BSIT-4A)', required:true, style:{ width:'94%', margin:'0 auto', textAlign:'center' } }),
+                React.createElement('input',{ key:'name', className:'input', name:'name', placeholder:'Name (e.g., 4A)', required:true, style:{ width:'94%', margin:'0 auto', textAlign:'center' } }),
+                React.createElement('input',{ key:'course', className:'input', name:'course', placeholder:'Course (e.g., BSIT)', required:true, style:{ width:'94%', margin:'0 auto', textAlign:'center' } }),
+                React.createElement('input',{ key:'term', className:'input', name:'term', placeholder:'Term (optional)', style:{ width:'94%', margin:'0 auto', textAlign:'center' } }),
+                React.createElement('div',{ key:'actions', className:'buttons', style:{ display:'grid', gridTemplateColumns:'1fr', gap:'0.5rem', justifyItems:'center', width:'100%' } },[
+                  React.createElement('button',{ key:'save', className:'role-button', type:'submit', style:{ width:'94%', margin:'0 auto', textAlign:'center' } },'Save'),
+                  React.createElement('button',{ key:'cancel', className:'role-button', type:'button', onClick: close, style:{ width:'94%', margin:'0 auto', textAlign:'center' } },'Cancel')
+                ])
+              ])
+            ])
+          ]);
+        }
+        function del(id){ if(!confirm('Delete this section?')) return; fetch('/api/sections/catalog/'+encodeURIComponent(id),{ method:'DELETE', headers: authHeaders() }).then(async r=>{ const j=await r.json().catch(()=>({ ok:false })); if(r.ok && j.ok) reload(); else alert(j.error||'Failed'); }).catch(()=>alert('Failed')); }
+        function List(){ return React.createElement('div',{ className:'buttons', style:{ width:'min(92vw,560px)', margin:'0 auto', display:'grid', gridTemplateColumns:'1fr', gap:'0.5rem' } }, rows.map(s=> React.createElement('div',{ key:s.id, className:'list-card' },[
+          React.createElement('div',{ key:'title', className:'title' }, s.code+' — '+s.name),
+          React.createElement('div',{ key:'meta', className:'meta' }, 'Course '+(s.course||'')+(s.term?(' • '+s.term):'')),
+          React.createElement('div',{ key:'actions', className:'actions' },[
+            React.createElement('button',{ key:'del', className:'role-button danger', onClick: ()=>del(s.id) },'🗑 Delete')
+          ])
+        ])) ); }
+        return React.createElement('main',{ className:'container centered' },[
+          React.createElement('div',{ key:'wrap', className:'dashboard-main center-page' },[
+            React.createElement('h1',{ key:'t', className:'title' },'OJTonTrack'),
+            React.createElement('p',{ key:'sub', className:'subtitle' },'Sections Catalog'),
+            error ? React.createElement('p',{ key:'err', style:{ color:'#b91c1c', fontWeight:600 } }, error) : null,
+            React.createElement('div',{ key:'actions', className:'buttons', style:{ width:'min(92vw,560px)', margin:'0 auto', display:'grid', gridTemplateColumns:'1fr', gap:'0.5rem' } },[
+              React.createElement('button',{ key:'add', className:'role-button', onClick: ()=>setShowAdd(true) },'➕ Add Section'),
+              React.createElement('a',{ key:'back', className:'role-button', href:'/admin/users-all.html' },'Back')
+            ]),
+            React.createElement(List,{ key:'list' }),
+            React.createElement(AddModal,{ key:'addModal' })
+          ])
+        ]);
+      }
+      try{ if(!window.React || !window.ReactDOM){ bootFallback('React not available'); } else { const root = ReactDOM.createRoot(document.getElementById('root')); root.render(React.createElement(Page)); } } catch(err){ bootFallback('Error: '+(err && err.message ? err.message : 'Unknown')); }
+    </script>
+  </body>
+</html>

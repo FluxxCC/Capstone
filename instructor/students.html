@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Instructor — Student Logs</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container centered">
+      <div class="dashboard-main center-page">
+        <div class="attendance-card" style="margin-top:0.75rem">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:center;font-size:18px;font-weight:700;margin-bottom:8px;text-align:center">
+            <div>STUDENT LOGS</div>
+          </div>
+          <div class="search-wrap" style="width:100%;margin:0 0 8px 0;padding:0 12px;box-sizing:border-box">
+            <input id="searchInput" class="input" type="text" placeholder="Search logs or students" style="width:100%;padding-left:12px;border:1px solid #ccc" />
+          </div>
+          <div id="pendingHeader" style="font-weight:800;margin:12px 0 6px">Pending Logs (0)</div>
+          <div style="height:1px;background:#e5e7eb;margin:0 0 8px"></div>
+          <div id="textLogs" class="recent-scroll small" style="height:24vh;overflow-y:auto;padding:0 16px"><div>Loading…</div></div>
+          <div id="confirmedHeader" style="font-weight:800;margin:24px 0 6px">Confirmed Logs (0)</div>
+          <div style="height:1px;background:#e5e7eb;margin:0 0 8px"></div>
+          <div id="photoLogs" class="recent-scroll small" style="height:24vh;overflow-y:auto;padding:0 16px"><div>Loading…</div></div>
+          <div id="studentsPanel" style="display:none;margin-top:12px">
+            <div style="font-weight:700;margin-bottom:8px">Students</div>
+            <div id="studentsList" class="recent-scroll small" style="max-height:220px"><div>Loading…</div></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <div id="photoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div id="photoBox" style="background:#fff;padding:10px;border-radius:10px;max-width:90%;max-height:85vh;display:flex;flex-direction:column;align-items:center">
+        <img id="photoModalImg" src="" alt="photo" style="max-width:100%;max-height:75vh;border-radius:8px" />
+        <button id="photoClose" class="role-button" style="margin-top:8px;padding:6px 12px">Close</button>
+      </div>
+    </div>
+    <nav class="student-nav">
+      <div class="student-nav-inner">
+        <a href="/instructor/dashboard.html" aria-label="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7"/><path d="M5 11v9h14v-9"/></svg>
+        </a>
+        <a href="/instructor/students.html" class="active" aria-label="Logs">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </a>
+        <a href="/instructor/reports.html" aria-label="Reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 012-2h10"/><path d="M20 7v12a2 2 0 01-2 2H6"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h6"/></svg>
+        </a>
+        <a href="/instructor/profile.html" aria-label="Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/config.js"></script>
+    <script>
+      function authHeaders(json){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function fmtWhen(ts){ const d = new Date(Number(ts||Date.now())); const date = d.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' }); const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' }); return date + ' at ' + time; }
+      document.addEventListener('DOMContentLoaded', async function(){
+        const textBox = document.getElementById('textLogs');
+        const photoBox = document.getElementById('photoLogs');
+        const search = document.getElementById('searchInput');
+        const studentsPanel = document.getElementById('studentsPanel');
+        const studentsList = document.getElementById('studentsList');
+        textBox.innerHTML = '<div class="skeleton-card"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line" style="width:40%;margin-top:8px"></div></div>';
+        photoBox.innerHTML = '<div class="skeleton-card"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line" style="width:40%;margin-top:8px"></div></div>';
+        let all = [];
+        let meSection = null;
+        let course = '';
+        let studentsLoaded = false;
+        try {
+          const meR = await fetch('/api/me', { headers: authHeaders(), cache: 'no-store' });
+          const meJ = await meR.json().catch(()=>({}));
+          meSection = String(meJ.data?.section || '').trim();
+          course = String(meJ.data?.course || meJ.data?.courseCode || '');
+          try {
+            const params = new URLSearchParams(window.location.search);
+            const qCourse = String(params.get('course')||'').trim();
+            const qSection = String(params.get('section')||'').trim();
+            if (qCourse) course = qCourse;
+            if (qSection) meSection = qSection;
+          } catch {}
+          const r = await fetch('/api/instructor/students/activity', { headers: authHeaders(), cache: 'no-store' });
+          const j = await r.json();
+          all = (r.ok && j.ok && Array.isArray(j.data)) ? j.data : [];
+        } catch { textBox.innerHTML = '<div>No pending Logs</div>'; photoBox.innerHTML = '<div>No activity yet</div>'; return; }
+
+        async function loadStudents(){
+          if (studentsLoaded) { studentsPanel.style.display = 'block'; return; }
+          studentsList.innerHTML = '<div class="skeleton-card"><div class="skeleton-line" style="width:70%"></div><div class="skeleton-line" style="width:50%;margin-top:8px"></div></div>';
+          try {
+            const r = await fetch('/api/students', { headers: authHeaders() });
+            const j = await r.json();
+            let rows = (r.ok && j.ok && Array.isArray(j.data)) ? j.data : [];
+            if (meSection) rows = rows.filter(x => String(x.section || '').trim() === meSection);
+            rows.sort((a,b)=>String(a.name||a.id_number||a.idNumber||'').localeCompare(String(b.name||b.id_number||b.idNumber||'')));
+            if (rows.length) {
+              studentsList.innerHTML = '';
+              rows.forEach(s => {
+                const name = s.name || s.id_number || s.idNumber || '';
+                const line = document.createElement('div');
+                line.textContent = name;
+                studentsList.appendChild(line);
+              });
+            } else {
+              studentsList.innerHTML = '<div class="empty">No students found</div>';
+            }
+            studentsLoaded = true;
+            studentsPanel.style.display = 'block';
+          } catch {
+            studentsList.innerHTML = '<div class="empty">No students found</div>';
+            studentsPanel.style.display = 'block';
+          }
+        }
+
+        function applyFilters(rows, statusReq){
+          const q = String(search.value || '').toLowerCase();
+          const s = String(statusReq || '');
+          return rows.filter(x => {
+            const name = String(x.name || x.idNumber || '').toLowerCase();
+            const type = String(x.type || '');
+            const status = String(x.status || '');
+            if (q && !(name.includes(q) || type.includes(q))) return false;
+            if (s && status !== s) return false;
+            return true;
+          });
+        }
+
+        function render(){
+          const pendingRows = applyFilters(all, 'awaiting_supervisor').sort((a,b)=>Number(b.ts||0)-Number(a.ts||0)).slice(0,200);
+          const confirmedRows = applyFilters(all, 'confirmed').sort((a,b)=>Number(b.ts||0)-Number(a.ts||0)).slice(0,200);
+          try {
+            const ph = document.getElementById('pendingHeader'); if (ph) ph.textContent = 'Pending Logs (' + pendingRows.length + ')';
+            const ch = document.getElementById('confirmedHeader'); if (ch) ch.textContent = 'Confirmed Logs (' + confirmedRows.length + ')';
+          } catch {}
+          if (pendingRows.length) {
+            textBox.innerHTML = '';
+            pendingRows.forEach(x => {
+              const d = new Date(Number(x.ts||Date.now()));
+              const date = d.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' });
+              const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' });
+              const item = document.createElement('div'); item.className='recent-item'; item.style.margin='6px 0'; item.style.padding='8px';
+              const title = document.createElement('div'); title.className='recent-title'; title.textContent = (x.type==='in'?'🕒 Time In':'🕒 Time Out') + ' — ' + time;
+              const who = String(x.name || x.idNumber || '').trim();
+              const subTop = document.createElement('div'); subTop.className='recent-sub'; subTop.textContent = date;
+              const sub = document.createElement('div'); sub.className='recent-sub'; sub.textContent = who;
+              const pill=document.createElement('span'); pill.className='status-pill status-pending'; pill.textContent = 'Pending'; pill.style.marginLeft='6px'; pill.style.padding='2px 8px'; pill.style.fontSize='0.7rem'; sub.appendChild(pill);
+              item.appendChild(title); item.appendChild(subTop); item.appendChild(sub);
+              textBox.appendChild(item);
+            });
+          } else {
+            textBox.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%"><div style="text-align:center;padding:16px;border-radius:12px;background:var(--surface-alpha);box-shadow:0 4px 10px rgba(0,0,0,0.08);width:100%"><div style="font-size:20px">📭</div><div style="font-weight:700;margin-top:4px">No pending logs</div><div style="font-size:12px;opacity:0.7">All logs are up-to-date.</div></div></div>';
+          }
+          if (confirmedRows.length) {
+            photoBox.innerHTML = '';
+            confirmedRows.forEach(x => {
+              const d = new Date(Number(x.ts||Date.now()));
+              const date = d.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' });
+              const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' });
+              const item = document.createElement('div'); item.className='recent-item'; item.style.margin='6px 0'; item.style.padding='8px';
+              const title = document.createElement('div'); title.className='recent-title'; title.textContent = (x.type==='in'?'🕒 Time In':'🕒 Time Out') + ' — ' + time;
+              const who = String(x.name || x.idNumber || '').trim();
+              const subTop = document.createElement('div'); subTop.className='recent-sub'; subTop.textContent = date;
+              const sub = document.createElement('div'); sub.className='recent-sub'; sub.textContent = who;
+              const pill=document.createElement('span'); pill.className='status-pill status-confirmed'; pill.textContent = '✔ Confirmed'; pill.style.marginLeft='6px'; pill.style.padding='2px 8px'; pill.style.fontSize='0.7rem'; sub.appendChild(pill);
+              const actions = document.createElement('div'); actions.className='recent-actions';
+              if (x.photoUrl) { const a=document.createElement('a'); a.href='#'; a.textContent='View Photo'; a.addEventListener('click',(e)=>{ e.preventDefault(); const m=document.getElementById('photoModal'); const img=document.getElementById('photoModalImg'); img.src=x.photoUrl; m.style.display='flex'; }); actions.appendChild(a); }
+              item.appendChild(title); item.appendChild(subTop); item.appendChild(sub); if (actions.childNodes.length) item.appendChild(actions);
+              photoBox.appendChild(item);
+            });
+          } else {
+            photoBox.innerHTML = '<div>No activity yet</div>';
+          }
+        }
+
+        search.addEventListener('input', render);
+        
+        const modal = document.getElementById('photoModal');
+        const closeBtn = document.getElementById('photoClose');
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display='none'; });
+        closeBtn.addEventListener('click', () => { modal.style.display='none'; });
+        render();
+        try {
+          const sb = window.supabase?.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+          if (sb) {
+            let listen = { event:'*', schema:'public', table:'attendance' };
+            if (course) listen = { event:'*', schema:'public', table:'attendance', filter:'course=eq.'+course };
+            sb.channel('inst-att:'+(course||'all')).on('postgres_changes', listen, async function(){
+              try {
+                const r = await fetch('/api/instructor/students/activity', { headers: authHeaders() });
+                const j = await r.json();
+                all = (r.ok && j.ok && Array.isArray(j.data)) ? j.data : [];
+                render();
+              } catch {}
+            }).subscribe();
+          }
+          try { setInterval(async function(){ const r = await fetch('/api/instructor/students/activity', { headers: authHeaders(), cache: 'no-store' }); const j = await r.json(); all = (r.ok && j.ok && Array.isArray(j.data)) ? j.data : []; render(); }, 3000); } catch {}
+          try { const ch = sb.channel('inst-broadcast:'+(course||'all')); ch.on('broadcast', { event:'attendance' }, async function(){ try { const r = await fetch('/api/instructor/students/activity', { headers: authHeaders(), cache: 'no-store' }); const j = await r.json(); all = (r.ok && j.ok && Array.isArray(j.data)) ? j.data : []; render(); } catch {} }); ch.subscribe(); } catch {}
+        } catch {}
+        // optional panel kept for inline view when needed
+      });
+    </script>
+    <script>
+      (function(){
+        const nav = document.querySelector('.student-nav'); if (!nav) return; nav.classList.add('slideable');
+        let startY=null, lastY=null, moved=0;
+        function start(e){ const t=e.touches?e.touches[0]:e; startY=t.clientY; lastY=startY; moved=0; }
+        function move(e){ const t=e.touches?e.touches[0]:e; lastY=t.clientY; moved=lastY-startY; }
+        function end(){ if (moved>30) { document.body.classList.add('nav-hidden'); } else if (moved<-30) { document.body.classList.remove('nav-hidden'); } else { document.body.classList.toggle('nav-hidden'); } startY=null; lastY=null; moved=0; }
+        nav.addEventListener('touchstart', start, { passive:true });
+        nav.addEventListener('touchmove', move, { passive:true });
+        nav.addEventListener('touchend', end);
+        nav.addEventListener('mousedown', start);
+        nav.addEventListener('mousemove', function(e){ if (startY!==null) move(e); });
+        nav.addEventListener('mouseup', end);
+      })();
+    </script>
+  </body>
+</html>

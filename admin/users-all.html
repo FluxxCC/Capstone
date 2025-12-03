@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack — Super Admin Users</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css" />
+    <script>
+      if (sessionStorage.getItem('superAdminAuth') !== 'true') {
+        window.location.replace('/admin/login');
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script>
+      function UsersAllPage() {
+        function RoleFilter() {
+          return React.createElement('div', { className: 'buttons' }, [
+            React.createElement('a', { key: 'coord', className: 'role-button', href: '/admin/users-coordinators-new.html' }, 'Coordinators'),
+            React.createElement('a', { key: 'inst', className: 'role-button', href: '/admin/users-instructors.html' }, 'Instructors'),
+            React.createElement('a', { key: 'sup', className: 'role-button', href: '/admin/users-supervisors.html' }, 'Supervisors'),
+            React.createElement('a', { key: 'stu', className: 'role-button', href: '/admin/users-students.html' }, 'Students'),
+            React.createElement('a', { key: 'back', className: 'role-button', href: '/admin/dashboard' }, 'Back to Dashboard'),
+          ]);
+        }
+
+        return React.createElement('main', { className: 'container centered' }, [
+          React.createElement('div', { key: 'wrap', className: 'dashboard-main center-page' }, [
+            React.createElement('h1', { key: 't', className: 'title' }, 'OJTonTrack'),
+            React.createElement('p', { key: 'sub', className: 'subtitle' }, 'Super Admin — All Users'),
+            React.createElement(RoleFilter, { key: 'filter' }),
+          ]),
+        ]);
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(UsersAllPage));
+    </script>
+  </body>
+</html>

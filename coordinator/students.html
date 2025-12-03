@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack – Coordinator Students</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  </head>
+  <body>
+    <main id="root"></main>
+    <script>
+      async function getMe() { const r = await fetch('/api/me'); if (!r.ok) { window.location.replace('/index.html'); throw new Error('auth'); } return r.json(); }
+      function Page() {
+        const [course, setCourse] = React.useState('');
+        const endpoint = '/api/students';
+        const [items, setItems] = React.useState([]);
+        const [loading, setLoading] = React.useState(true);
+        const [error, setError] = React.useState('');
+        const [search, setSearch] = React.useState('');
+        const [filterSection, setFilterSection] = React.useState('');
+        const [filterSupervisor, setFilterSupervisor] = React.useState('');
+        const [sortBy, setSortBy] = React.useState('name');
+        const [filtersOpen, setFiltersOpen] = React.useState(false);
+        const [showAdd, setShowAdd] = React.useState(false);
+        const [editing, setEditing] = React.useState(null);
+        const [supMap, setSupMap] = React.useState({});
+        const [filterCourse, setFilterCourse] = React.useState('');
+        const [hasCourseParam, setHasCourseParam] = React.useState(false);
+
+        React.useEffect(() => { (async()=>{ try { const j = await getMe(); setCourse(String(j.data?.course || '')); } catch {} })(); const params = new URLSearchParams(window.location.search); const c = String(params.get('course')||'').trim(); if (c) { setFilterCourse(c); setFilterSection(''); setHasCourseParam(true); } }, []);
+
+        function authHeaders(json=false){
+          const t = sessionStorage.getItem('userToken');
+          const h = t ? { Authorization: 'Bearer ' + t } : {};
+          return json ? { 'Content-Type': 'application/json', ...h } : h;
+        }
+        function reload() {
+          setLoading(true);
+          fetch(endpoint, { headers: authHeaders() }) 
+            .then(async (r) => {
+              const data = await r.json().catch(() => ({ ok: false, error: 'Invalid JSON' }));
+              if (r.ok && data && data.ok) { setItems(Array.isArray(data.data) ? data.data : []); setError(''); }
+              else { setError((data && data.error) || 'Failed to load students'); }
+            })
+            .catch(() => setError('Failed to load students'))
+            .finally(() => setLoading(false));
+        }
+        React.useEffect(() => { reload(); loadSupervisors(); }, []);
+
+        function loadSupervisors() {
+          fetch('/api/supervisors', { headers: authHeaders() })
+            .then(async (r) => {
+              const data = await r.json().catch(() => ({ ok: false }));
+              if (r.ok && data && data.ok && Array.isArray(data.data)) {
+                const m = {};
+                for (const s of data.data) { const id = String(s.idNumber || s.idnumber || s.id || '').trim(); if (id) m[id] = s.name || id; }
+                setSupMap(m);
+              }
+            })
+            .catch(() => {});
+        }
+
+        async function addStudent(e) {
+          e.preventDefault();
+          const f = e.currentTarget;
+          const payload = {
+            idNumber: f.idNumber.value.trim(),
+            password: f.password.value.trim(),
+            firstName: (f.firstName?.value || '').trim(),
+            middleName: (f.middleName?.value || '').trim(),
+            lastName: (f.lastName?.value || '').trim(),
+            course: (f.course?.value || '').trim() || null,
+            section: (f.section?.value || '').trim() || null,
+            supervisorId: (f.supervisorId?.value || '').trim() || null
+          };
+          const resp = await fetch('/api/students', { method: 'POST', headers: authHeaders(true), body: JSON.stringify(payload) });
+          const json = await resp.json();
+          if (resp.ok && json.ok) { f.reset(); setShowAdd(false); reload(); }
+          else alert(json.error || 'Failed');
+        }
+
+        async function deleteStudent(id) {
+          const resp = await fetch('/api/students/' + id, { method: 'DELETE', headers: authHeaders() });
+          const json = await resp.json();
+          if (resp.ok && json.ok) reload(); else alert(json.error || 'Failed');
+        }
+
+        async function updateStudent(id, payload) {
+          const resp = await fetch('/api/students/' + id, { method: 'PUT', headers: authHeaders(true), body: JSON.stringify(payload) });
+          const json = await resp.json();
+          if (resp.ok && json.ok) reload(); else alert(json.error || 'Failed');
+        }
+
+        const sections = Array.from(new Set(items.map(u => String(u.section||'').trim()).filter(Boolean))).sort();
+        const supervisors = Array.from(new Set(items.map(u => String(u.supervisorId||u.supervisorid||'').trim()).filter(Boolean))).sort();
+        const visible = items
+          .filter(u => {
+            const q = search.trim().toLowerCase();
+            if (q && !(((u.name || '').toLowerCase().includes(q)) || ((u.idNumber || '').toLowerCase().includes(q)) || ((u.section || '').toLowerCase().includes(q)) || ((u.supervisorId || '').toLowerCase().includes(q)))) return false;
+            if (filterSection) {
+              const raw = String(u.section||'').trim();
+              const secCode = raw.includes(' ') ? raw.split(/\s+/).pop() : raw;
+              if (secCode !== filterSection) return false;
+            }
+            if (filterSupervisor && String(u.supervisorId||u.supervisorid||'') !== filterSupervisor) return false;
+            if (filterCourse) {
+              const c0 = String(u.course||'').trim();
+              const s0 = String(u.section||'').trim();
+              const inferred = (!c0 && s0) ? String(s0).split(' ')[0] : '';
+              const cc = c0 || inferred || '';
+              if (cc !== filterCourse) return false;
+            }
+            return true;
+          })
+          .sort((a,b)=>{
+            if (sortBy==='name') return String(a.name||'').localeCompare(String(b.name||''));
+            if (sortBy==='id') return String(a.idNumber||'').localeCompare(String(b.idNumber||''));
+            return 0;
+          });
+
+        const [toDelete, setToDelete] = React.useState(null);
+        function List() {
+          if (loading) return React.createElement('div', { className: 'buttons', style: { width: '100%', margin: 0 } }, [
+            React.createElement('div', { key: 'sk1', className: 'skeleton-card' }, [ React.createElement('div', { className: 'skeleton-line', style: { width:'60%' } }), React.createElement('div', { className: 'skeleton-line', style: { width:'40%', marginTop:8 } }) ]),
+            React.createElement('div', { key: 'sk2', className: 'skeleton-card', style: { marginTop:8 } }, [ React.createElement('div', { className: 'skeleton-line', style: { width:'70%' } }), React.createElement('div', { className: 'skeleton-line', style: { width:'50%', marginTop:8 } }) ])
+          ]);
+          if (!visible.length) return React.createElement('div', { className: 'empty' }, 'No students yet. Add one to get started.');
+          return React.createElement('div', { className: 'buttons', style: { width: '100%', margin: 0 } }, visible.map(u => {
+            const params = new URLSearchParams(window.location.search);
+            const c = String(params.get('course')||'').trim();
+            const href = '/coordinator/student-details.html?id=' + encodeURIComponent(u.idNumber) + (c ? ('&course=' + encodeURIComponent(c)) : '');
+            return React.createElement('a', { key: u.idNumber, href: href, className: 'list-card', style: { display: 'block', textDecoration: 'none', color: 'inherit', scrollSnapAlign: 'start' } }, [
+              React.createElement('div', { key: 'title', className: 'title' }, `${u.name || '(No name)'} (${u.idNumber})`),
+              React.createElement('div', { key: 'meta', className: 'meta' }, `Course ${String(u.course||'').trim() || '—'} — Section ${u.section || '—'} — Supervisor ${(() => { const sid = String(u.supervisorId || u.supervisorid || '').trim(); const nm = String(u.supervisorName||'').trim(); if (nm) return nm; if (sid) { const lbl = supMap[sid] || sid; return lbl; } return '—'; })()}`)
+            ]);
+          }));
+        }
+
+        function Toolbar() {
+          return React.createElement('div', { key: 'toolbar', style: { width: 'min(92vw, 560px)', display: 'grid', gridTemplateColumns: '1fr', alignItems: 'center', gap: '0.75rem', margin: '0.5rem auto 1rem', background: 'var(--surface-alpha)', border: '1px solid var(--border-alpha)', borderRadius: 12, padding: '0.5rem' } }, [
+            React.createElement('div', { key: 'searchWrap', className: 'search-wrap', style: { width: '100%', margin: '0 auto' } }, [
+              React.createElement('input', { className: 'input', value: search, onChange: (e) => setSearch(e.target.value), placeholder: 'Search students by name, ID, section or supervisor', autoComplete: 'off', autoFocus: true, spellCheck: false, type: 'search', name: 'search', inputMode: 'search', onKeyDown: (e) => { if (e.key === 'Enter') e.preventDefault(); }, style: { width: '100%' } })
+            ]),
+            hasCourseParam ? React.createElement('div', { key: 'secBtns', className: 'buttons', style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '0.5rem', width: '100%', margin: 0 } }, [
+              React.createElement('button', { key: '4A', type: 'button', className: 'role-button', onClick: ()=>setFilterSection('4A') }, (filterSection==='4A'?'✓ ':'')+'4A'),
+              React.createElement('button', { key: '4B', type: 'button', className: 'role-button', onClick: ()=>setFilterSection('4B') }, (filterSection==='4B'?'✓ ':'')+'4B'),
+              React.createElement('button', { key: '4C', type: 'button', className: 'role-button', onClick: ()=>setFilterSection('4C') }, (filterSection==='4C'?'✓ ':'')+'4C'),
+              React.createElement('button', { key: '4D', type: 'button', className: 'role-button', onClick: ()=>setFilterSection('4D') }, (filterSection==='4D'?'✓ ':'')+'4D')
+            ]) : null,
+            hasCourseParam ? null : React.createElement('div', { key: 'filtersToggle', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' } }, [
+              React.createElement('button', { key: 'toggleFilters', type: 'button', className: 'role-button', onClick: ()=>setFiltersOpen(!filtersOpen) }, filtersOpen ? 'Hide Filters' : 'Show Filters'),
+              React.createElement('select', { key: 'sortSelect', className: 'input', value: sortBy, onChange: e=>setSortBy(e.target.value) }, [
+                React.createElement('option', { key: 'name', value: 'name' }, 'Sort: A–Z'),
+                React.createElement('option', { key: 'id', value: 'id' }, 'Sort: by ID')
+              ])
+            ]),
+            hasCourseParam || !filtersOpen ? null : React.createElement('div', { key: 'filters', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' } }, [
+              React.createElement('select', { key: 'section', className: 'input', value: filterSection, onChange: e=>setFilterSection(e.target.value) }, [ React.createElement('option', { key: 'any', value: '' }, 'Section: Any'), ...sections.map(s=>React.createElement('option', { key: s, value: s }, s)) ]),
+              React.createElement('select', { key: 'supervisor', className: 'input', value: filterSupervisor, onChange: e=>setFilterSupervisor(e.target.value) }, [ React.createElement('option', { key: 'any', value: '' }, 'Supervisor: Any'), ...supervisors.map(s=>React.createElement('option', { key: s, value: s }, s)) ])
+            ])
+          ]);
+        }
+
+        function ModalEdit() {
+          if (!editing) return null;
+          React.useEffect(() => { function onKey(e) { if (e.key === 'Escape') setEditing(null); } window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey); }, [editing]);
+          function submit(e) { e.preventDefault(); const f = e.currentTarget; const payload = { firstName: (f.firstName?.value || '').trim(), middleName: (f.middleName?.value || '').trim(), lastName: (f.lastName?.value || '').trim(), section: (f.section?.value || '').trim() || null, supervisorId: (f.supervisorId?.value || '').trim() || null, password: (f.password?.value || '').trim() || undefined }; if (!payload.firstName || !payload.lastName) { alert('First and Last name are required'); return; } updateStudent(editing.idNumber, payload).then(() => setEditing(null)); }
+          const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 0 };
+          const modalStyle = { width: 'min(92vw, 560px)', background: '#ffffff', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', padding: '1rem', boxSizing: 'border-box', margin: 0 };
+          const [supListEdit, setSupListEdit] = React.useState([]);
+          React.useEffect(() => { (async()=>{ try { const sec = String(editing.section||'').trim(); const url = sec ? ('/api/supervisors?section=' + encodeURIComponent(sec)) : '/api/supervisors'; const r = await fetch(url, { headers: authHeaders() }); const j = await r.json(); if (r.ok && j.ok && Array.isArray(j.data)) setSupListEdit(j.data); } catch {} })(); }, [editing]);
+          return React.createElement('div', { key: 'overlay', style: overlayStyle, onClick: () => setEditing(null) }, [
+            React.createElement('div', { key: 'modal', style: { ...modalStyle, textAlign: 'center', position: 'relative', overflow: 'hidden' }, onClick: e => e.stopPropagation() }, [
+              React.createElement('div', { key: 'head', style: { display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.5rem' } }, [ React.createElement('div', { key: 'title', style: { fontWeight: 700 } }, `Edit Student (${editing.idNumber})`) ]),
+              React.createElement('div', { key: 'content', style: { width: '100%', margin: '0 auto' } }, [
+                React.createElement('form', { key: 'form', className: 'form', onSubmit: submit, style: { display: 'grid', gap: '0.75rem', justifyItems: 'center', textAlign: 'center', marginTop: 0, width: '100%' } }, [
+                  React.createElement('input', { key: 'firstName', className: 'input', name: 'firstName', defaultValue: editing.firstName || '', placeholder: 'First Name', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'middleName', className: 'input', name: 'middleName', defaultValue: editing.middleName || '', placeholder: 'Middle Name', style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'lastName', className: 'input', name: 'lastName', defaultValue: editing.lastName || '', placeholder: 'Last Name', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('select', { key: 'section', className: 'input', name: 'section', defaultValue: editing.section, style: { width: '94%', margin: '0 auto', textAlign: 'center', textAlignLast: 'center', MozTextAlignLast: 'center' } }, [
+                    React.createElement('option', { key: 'phs', value: '' }, 'Assign Section'),
+                    React.createElement('option', { key: '4A', value: '4A' }, '4A'), React.createElement('option', { key: '4B', value: '4B' }, '4B'), React.createElement('option', { key: '4C', value: '4C' }, '4C'), React.createElement('option', { key: '4D', value: '4D' }, '4D')
+                  ]),
+                  React.createElement(SupervisorSelect, { key: 'supervisorId', name: 'supervisorId', placeholder: 'Assign Supervisor (optional)', options: supListEdit, defaultValue: editing.supervisorId || editing.supervisorid || '' }),
+                  React.createElement('input', { key: 'password', className: 'input', name: 'password', type: 'password', placeholder: 'New Password (optional)', style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('div', { key: 'actions', className: 'buttons', style: { display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem', justifyItems: 'center', width: '100%', margin: 0 } }, [
+                    React.createElement('button', { key: 'save', className: 'role-button', type: 'submit', style: { width: '94%', margin: '0 auto', textAlign: 'center' } }, 'Save Changes'),
+                    React.createElement('button', { key: 'cancel', className: 'role-button', type: 'button', onClick: () => setEditing(null), style: { width: '94%', margin: '0 auto', textAlign: 'center' } }, 'Cancel')
+                  ])
+                ])
+              ])
+            ])
+          ]);
+        }
+
+        function DeleteConfirm(){
+          if(!toDelete) return null;
+          React.useEffect(()=>{ function onKey(e){ if(e.key==='Escape') setToDelete(null); } window.addEventListener('keydown', onKey); return ()=>window.removeEventListener('keydown', onKey); },[toDelete]);
+          const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 0 };
+          const modalStyle = { width: 'min(92vw, 560px)', background: 'var(--surface-alpha)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', padding: '1rem', boxSizing: 'border-box', margin: 0 };
+          function confirmDelete(){ deleteStudent(toDelete).then(()=>setToDelete(null)); }
+          function close(){ setToDelete(null); }
+          return React.createElement('div',{ key:'overlay', style: overlayStyle, onClick: close },[
+            React.createElement('div',{ key:'modal', style:{ ...modalStyle, textAlign:'center', position:'relative' }, onClick:e=>e.stopPropagation() },[
+              React.createElement('div',{ key:'title', style:{ fontWeight:700, marginBottom:'0.5rem' } },'Are you sure you want to delete this user?'),
+              React.createElement('div',{ key:'actions', className:'buttons', style:{ display:'grid', gridTemplateColumns:'1fr', gap:'0.5rem', justifyItems:'center', width:'100%' } },[
+                React.createElement('button',{ key:'yes', className:'role-button danger', type:'button', onClick: confirmDelete, style:{ width:'94%', margin:'0 auto', textAlign:'center' } },'Delete'),
+                React.createElement('button',{ key:'no', className:'role-button', type:'button', onClick: close, style:{ width:'94%', margin:'0 auto', textAlign:'center' } },'Cancel')
+              ])
+            ])
+          ]);
+        }
+
+        function CustomSelect(props) {
+          const { name, placeholder, options = [], required, defaultValue, onChange } = props || {};
+          const [open, setOpen] = React.useState(false);
+          const [value, setValue] = React.useState(defaultValue || '');
+          function choose(v) { setValue(v); if (typeof onChange === 'function') onChange(v); setOpen(false); }
+          return React.createElement('div', { style: { width: '94%', margin: '0 auto' } }, [
+            React.createElement('input', { key: 'hidden', type: 'text', name, value, required, style: { display: 'none' } }),
+            React.createElement('button', { key: 'btn', type: 'button', className: 'input', onClick: () => setOpen(true), style: { width: '100%', textAlign: 'center' } }, value || placeholder || ''),
+            open ? React.createElement('div', { key: 'overlay', style: { position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.55)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 100, padding: '1rem' }, onClick: () => setOpen(false) }, [
+              React.createElement('div', { key: 'box', style: { position: 'relative', width: 'min(80vw, 360px)', maxHeight: '70vh', overflowY: 'auto', background: '#ffffff', borderRadius: 12, boxShadow: '0 20px 40px rgba(0,0,0,0.25)', padding: '0.75rem', paddingTop: '2rem' }, onClick: e => e.stopPropagation() }, [
+                React.createElement('span', { key: 'x', onClick: () => setOpen(false), style: { position: 'absolute', top: 8, right: 8, cursor: 'pointer', fontSize: 18, lineHeight: 1 } }, '×'),
+                React.createElement('div', { key: 'ph', style: { fontWeight: 700, textAlign: 'center', marginBottom: '0.5rem' } }, placeholder || ''),
+                React.createElement('div', { key: 'list', style: { display: 'grid', gap: '0.5rem' } }, options.map(opt => React.createElement('button', { key: opt, type: 'button', className: 'role-button', onClick: () => choose(opt), style: { width: '100%', textAlign: 'center' } }, opt)))
+              ])
+            ]) : null
+          ]);
+        }
+
+        function SupervisorSelect(props) {
+          const { name, placeholder, options = [], required, defaultValue } = props || {};
+          const [open, setOpen] = React.useState(false);
+          const [value, setValue] = React.useState(defaultValue || '');
+          function pick(id) { setValue(id); setOpen(false); }
+          const label = (() => {
+            if (!value) return placeholder || '';
+            const row = options.find(s => String(s.idNumber||s.idnumber||'') === String(value));
+            const nm = row ? (row.name || '') : '';
+            return `${value}${nm ? ' — ' + nm : ''}`;
+          })();
+          return React.createElement('div', { style: { width: '94%', margin: '0 auto' } }, [
+            React.createElement('input', { key: 'hidden', type: 'text', name, value, required, style: { display: 'none' } }),
+            React.createElement('button', { key: 'btn', type: 'button', className: 'input', onClick: () => setOpen(true), style: { width: '100%', textAlign: 'center' } }, label),
+            open ? React.createElement('div', { key: 'overlay', style: { position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.55)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 100, padding: '1rem' }, onClick: () => setOpen(false) }, [
+              React.createElement('div', { key: 'box', style: { position: 'relative', width: 'min(80vw, 360px)', maxHeight: '70vh', overflowY: 'auto', background: '#ffffff', borderRadius: 12, boxShadow: '0 20px 40px rgba(0,0,0,0.25)', padding: '0.75rem', paddingTop: '2rem' }, onClick: e => e.stopPropagation() }, [
+                React.createElement('span', { key: 'x', onClick: () => setOpen(false), style: { position: 'absolute', top: 8, right: 8, cursor: 'pointer', fontSize: 18, lineHeight: 1 } }, '×'),
+                React.createElement('div', { key: 'ph', style: { fontWeight: 700, textAlign: 'center', marginBottom: '0.5rem' } }, placeholder || ''),
+                React.createElement('div', { key: 'list', style: { display: 'grid', gap: '0.5rem' } }, options.map(s => {
+                  const id = String(s.idNumber||s.idnumber||'');
+                  const nm = s.name || '';
+                  const label = `${id}${nm ? ' — ' + nm : ''}`;
+                  return React.createElement('button', { key: id, type: 'button', className: 'role-button', onClick: () => pick(id), style: { width: '100%', textAlign: 'center' } }, label);
+                }))
+              ])
+            ]) : null
+          ]);
+        }
+
+        function AddModal() {
+          if (!showAdd) return null;
+          const [supList, setSupList] = React.useState([]);
+          const [selCourse, setSelCourse] = React.useState(course || '');
+          const [selSection, setSelSection] = React.useState('');
+          React.useEffect(() => { (async()=>{ try { const r = await fetch('/api/supervisors'); const j = await r.json(); if (r.ok && j.ok && Array.isArray(j.data)) setSupList(j.data); } catch {} })(); }, []);
+          const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.5)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 50, padding: '1rem', minHeight: '100dvh', overscrollBehavior: 'contain' };
+          const modalStyle = { width: 'min(92vw, 560px)', maxHeight: '80vh', overflowY: 'auto', background: 'var(--surface-alpha)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', padding: '1rem', margin: 0, boxSizing: 'border-box' };
+          function submit(e) { addStudent(e); }
+          function close() { setShowAdd(false); }
+          React.useEffect(() => { function onKey(e){ if(e.key==='Escape') setShowAdd(false); } window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey); }, []);
+          React.useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = prev; }; }, []);
+          const filteredSup = React.useMemo(() => {
+            const c = String(selCourse||'').trim();
+            const s = String(selSection||'').trim();
+            return (Array.isArray(supList)?supList:[]).filter(row => {
+              const rc = String(row.course||'').trim();
+              const rs = String(row.section||'').trim();
+              const okC = c ? rc === c : true;
+              const okS = s ? rs === s : true;
+              return okC && okS;
+            });
+          }, [supList, selCourse, selSection]);
+          return React.createElement('div', { key: 'overlay', style: overlayStyle, onClick: close }, [
+            React.createElement('div', { key: 'modal', style: { ...modalStyle, textAlign: 'center', position: 'relative' }, onClick: e => e.stopPropagation(), role: 'dialog', 'aria-modal': true }, [
+              React.createElement('button', { key: 'x', type: 'button', onClick: close, style: { position: 'absolute', top: 8, right: 8, padding: '2px 8px', fontSize: 18, lineHeight: 1, border: 'none', background: 'transparent', cursor: 'pointer' } }, '×'),
+              React.createElement('div', { key: 'content', style: { width: '100%', margin: '0 auto' } }, [
+                React.createElement('form', { key: 'form', className: 'form', onSubmit: submit, style: { display: 'grid', gap: '0.75rem', justifyItems: 'center', textAlign: 'center', marginTop: 0, width: '100%' } }, [
+                  React.createElement('input', { key: 'id', className: 'input', name: 'idNumber', placeholder: 'ID Number', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'pass', className: 'input', name: 'password', placeholder: 'Password', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'firstName', className: 'input', name: 'firstName', placeholder: 'First Name', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'middleName', className: 'input', name: 'middleName', placeholder: 'Middle Name', style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                  React.createElement('input', { key: 'lastName', className: 'input', name: 'lastName', placeholder: 'Last Name', required: true, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }),
+                React.createElement(CustomSelect, { key: 'course', name: 'course', placeholder: 'Assign Course', options: ['BSIT','BSIS','BSCS'], required: true, defaultValue: course || '', onChange: v=>setSelCourse(v) }),
+                React.createElement(CustomSelect, { key: 'section', name: 'section', placeholder: 'Assign Section', options: ['4A','4B','4C','4D'], onChange: v=>setSelSection(v) }),
+                React.createElement(SupervisorSelect, { key: 'supervisor', name: 'supervisorId', placeholder: 'Assign Supervisor (optional)', options: filteredSup }),
+                  React.createElement('div', { key: 'actions', className: 'buttons', style: { display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem', justifyItems: 'center', width: '100%', margin: 0 } }, [
+                    React.createElement('button', { key: 'add', className: 'role-button neutral', type: 'submit', style: { width: '94%', margin: '0 auto', textAlign: 'center' } }, 'Add Student'),
+                    React.createElement('button', { key: 'cancel', className: 'role-button neutral', type: 'button', onClick: close, style: { width: '94%', margin: '0 auto', textAlign: 'center' } }, 'Cancel')
+                  ])
+                ])
+              ])
+            ])
+          ]);
+        }
+
+        return React.createElement('main', { className: 'container' }, [
+          React.createElement('h1', { key: 't', className: 'title' }, 'OJTonTrack'),
+          React.createElement('p', { key: 'sub', className: 'subtitle' }, `Coordinator — ${hasCourseParam ? (filterCourse || 'UNKNOWN') : (course || 'UNKNOWN')} — Students`),
+          React.createElement(Toolbar, { key: 'toolbar' }),
+          error ? React.createElement('p', { key: 'err', style: { color: '#b91c1c', fontWeight: 600 } }, error) : null,
+          hasCourseParam ? null : React.createElement('div', { key: 'counts', className: 'recent-label', style: { width: 'min(92vw, 560px)', margin: '0.5rem auto', textAlign: 'center' } }, `Showing ${visible.length} of ${items.length} students`),
+            React.createElement(AddModal, { key: 'addModal' }),
+            React.createElement(ModalEdit, { key: 'editModal' }),
+            React.createElement(DeleteConfirm, { key: 'deleteConfirm' }),
+          React.createElement('div', { key: 'scrollbox', style: { width: 'min(92vw, 560px)', maxHeight: 'min(60vh, 420px)', overflowY: 'auto', overflowX: 'hidden', border: '1px solid var(--border-alpha)', borderRadius: 12, background: 'var(--surface-alpha)', padding: '0.75rem', margin: '0.5rem auto' } }, [ React.createElement(List, { key: 'list' }) ]),
+          React.createElement('button', { key: 'fab', className: 'role-button fab', onClick: () => setShowAdd(true), style: { background:'#111827', color:'#fff' } }, React.createElement('svg',{xmlns:'http://www.w3.org/2000/svg',viewBox:'0 0 24 24',fill:'none',stroke:'#fff','stroke-width':2,'stroke-linecap':'round','stroke-linejoin':'round'},[React.createElement('path',{d:'M12 5v14'}),React.createElement('path',{d:'M5 12h14'})])),
+          React.createElement('div', { key: 'actions', className: 'buttons', style: { width: 'min(92vw, 560px)', margin: '1rem auto 0', display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem', justifyItems: 'stretch' } }, [
+            React.createElement('button', { key: 'openAdd', className: 'role-button', onClick: () => setShowAdd(true), style: { width: '100%' } }, 'Add Student'),
+            React.createElement('a', { key: 'back', className: 'role-button', href: (hasCourseParam ? '/coordinator/students-select.html' : '/coordinator/users.html'), style: { width: '100%' } }, 'Back')
+          ])
+        ]);
+      }
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(Page));
+    </script>
+  </body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack – Student Details</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  </head>
+  <body>
+    <main id="root"><div class="container" style="width:min(92vw,560px);margin:2rem auto;padding:1rem;border:2px solid #d1d5db;border-radius:10px;background:#fff;text-align:center;font-weight:700;">Loading…</div></main>
+    <script>
+      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      async function getMe() { const r = await fetch('/api/me', { headers: authHeaders() }); const j = await r.json().catch(() => ({})); if (!r.ok) { window.location.replace('/index.html'); throw new Error('auth'); } return j; }
+      function Page(){
+        const [course, setCourse] = React.useState('');
+        const [id, setId] = React.useState('');
+        const [item, setItem] = React.useState(null);
+        const [loading, setLoading] = React.useState(true);
+        const [error, setError] = React.useState('');
+        const [hasCourseParam, setHasCourseParam] = React.useState(false);
+        const [courseParam, setCourseParam] = React.useState('');
+        const [editing, setEditing] = React.useState(null);
+        const [toDelete, setToDelete] = React.useState(null);
+
+        React.useEffect(()=>{ (async()=>{ try{ const j = await getMe(); setCourse(String(j.data?.course||'')); }catch{} })(); const u = new URL(window.location.href); const pid = String(u.searchParams.get('id')||'').trim(); const pc = String(u.searchParams.get('course')||'').trim(); if (!pid) { window.location.replace('/coordinator/students.html'); return; } setId(pid); if (pc) { setCourseParam(pc); setHasCourseParam(true); } })
+
+        React.useEffect(()=>{ if(!id) return; setLoading(true); fetch('/api/students', { headers: authHeaders() }).then(async r=>{ const j = await r.json().catch(()=>({})); if (r.ok && j && j.ok && Array.isArray(j.data)) { const rows = j.data; const found = rows.find(x => String(x.idNumber||x.idnumber||'') === String(id)); if (found) { setItem(found); setError(''); } else { setItem(null); setError('Student not found'); } } else { setError((j && j.error)||'Failed to load'); } }).catch(()=>setError('Failed to load')).finally(()=>setLoading(false)); },[id]);
+
+        async function updateStudent(payload){ const resp = await fetch('/api/students/' + id, { method:'PUT', headers: authHeaders(true), body: JSON.stringify(payload) }); const json = await resp.json(); if (resp.ok && json.ok) { const name = payload.firstName || payload.lastName ? [payload.firstName||'', payload.middleName||'', payload.lastName||''].filter(Boolean).join(' ') : (item.name||''); setItem({ ...item, ...payload, name }); setEditing(null); } else alert(json.error || 'Failed'); }
+        async function deleteStudent(){ const resp = await fetch('/api/students/' + id, { method:'DELETE', headers: authHeaders() }); const json = await resp.json(); if (resp.ok && json.ok) { const back = hasCourseParam ? ('/coordinator/students.html?course=' + encodeURIComponent(courseParam)) : '/coordinator/students.html'; window.location.replace(back); } else alert(json.error || 'Failed'); }
+
+        function ModalEdit(){ if(!editing) return null; React.useEffect(()=>{ function onKey(e){ if(e.key==='Escape') setEditing(null); } window.addEventListener('keydown', onKey); return ()=>window.removeEventListener('keydown', onKey); },[editing]); function submit(e){ e.preventDefault(); const f = e.currentTarget; const payload = { firstName: (f.firstName?.value||'').trim(), middleName: (f.middleName?.value||'').trim(), lastName: (f.lastName?.value||'').trim(), section: (f.section?.value||'').trim() || null, supervisorId: (f.supervisorId?.value||'').trim() || null, password: (f.password?.value||'').trim() || undefined }; if (!payload.firstName || !payload.lastName) { alert('First and Last name are required'); return; } updateStudent(payload); }
+          const overlayStyle = { position:'fixed', inset:0, background:'rgba(2,6,23,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, padding:0 };
+          const modalStyle = { width:'min(92vw, 560px)', background:'#ffffff', borderRadius:12, boxShadow:'0 10px 30px rgba(0,0,0,0.25)', padding:'1rem', boxSizing:'border-box', margin:0 };
+          return React.createElement('div',{ key:'overlay', style: overlayStyle, onClick: ()=>setEditing(null) },[
+            React.createElement('div',{ key:'modal', style:{ ...modalStyle, textAlign:'center', position:'relative', overflow:'hidden' }, onClick:e=>e.stopPropagation() },[
+              React.createElement('div',{ key:'head', style:{ display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'0.5rem' } },[ React.createElement('div',{ key:'title', style:{ fontWeight:700 } }, 'Edit Student (' + id + ')') ]),
+              React.createElement('div',{ key:'content', style:{ width:'100%', margin:'0 auto' } },[
+                React.createElement('form',{ key:'form', className:'form', onSubmit: submit, style:{ display:'grid', gap:'0.75rem', justifyItems:'center', textAlign:'center', marginTop:0, width:'100%' } },[
+                  React.createElement('input',{ key:'firstName', className:'input', name:'firstName', defaultValue:item && item.firstName || '', placeholder:'First Name', required:true, style:{ width:'94%', margin:'0 auto', textAlign:'center' } }),
+                  React.createElement('input',{ key:'middleName', className:'input', name:'middleName', defaultValue:item && item.middleName || '', placeholder:'Middle Name', style:{ width:'94%', margin:'0 auto', textAlign:'center' } }),
+                  React.createElement('input',{ key:'lastName', className:'input', name:'lastName', defaultValue:item && item.lastName || '', placeholder:'Last Name', required:true, style:{ width:'94%', margin:'0 auto', textAlign:'center' } }),
+                  React.createElement('select',{ key:'section', className:'input', name:'section', defaultValue:item && item.section || '', style:{ width:'94%', margin:'0 auto', textAlign:'center', textAlignLast:'center', MozTextAlignLast:'center' } },[
+                    React.createElement('option',{ key:'phs', value:'' },'Assign Section'),
+                    React.createElement('option',{ key:'4A', value:'4A' },'4A'), React.createElement('option',{ key:'4B', value:'4B' },'4B'), React.createElement('option',{ key:'4C', value:'4C' },'4C'), React.createElement('option',{ key:'4D', value:'4D' },'4D')
+                  ]),
+                  React.createElement('input',{ key:'supervisorId', className:'input', name:'supervisorId', defaultValue:item && (item.supervisorId || item.supervisorid) || '', placeholder:'Supervisor ID (optional)', style:{ width:'94%', margin:'0 auto', textAlign:'center' } }),
+                  React.createElement('input',{ key:'password', className:'input', name:'password', type:'password', placeholder:'New Password (optional)', style:{ width:'94%', margin:'0 auto', textAlign:'center' } }),
+                  React.createElement('div',{ key:'actions', className:'buttons', style:{ display:'grid', gridTemplateColumns:'1fr', gap:'0.5rem', justifyItems:'center', width:'100%', margin:0 } },[
+                    React.createElement('button',{ key:'save', className:'role-button', type:'submit', style:{ width:'94%', margin:'0 auto', textAlign:'center' } },'Save Changes'),
+                    React.createElement('button',{ key:'cancel', className:'role-button', type:'button', onClick: ()=>setEditing(null), style:{ width:'94%', margin:'0 auto', textAlign:'center' } },'Cancel')
+                  ])
+                ])
+              ])
+            ])
+          ]);
+        }
+
+        function DeleteConfirm(){ if(!toDelete) return null; React.useEffect(()=>{ function onKey(e){ if(e.key==='Escape') setToDelete(null); } window.addEventListener('keydown', onKey); return ()=>window.removeEventListener('keydown', onKey); },[toDelete]); const overlayStyle = { position:'fixed', inset:0, background:'rgba(2,6,23,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, padding:0 }; const modalStyle = { width:'min(92vw, 560px)', background:'var(--surface-alpha)', borderRadius:12, boxShadow:'0 10px 30px rgba(0,0,0,0.25)', padding:'1rem', boxSizing:'border-box', margin:0 }; function confirmDelete(){ deleteStudent().then(()=>setToDelete(null)); } function close(){ setToDelete(null); } return React.createElement('div',{ key:'overlay', style: overlayStyle, onClick: close },[ React.createElement('div',{ key:'modal', style:{ ...modalStyle, textAlign:'center', position:'relative' }, onClick:e=>e.stopPropagation() },[ React.createElement('div',{ key:'title', style:{ fontWeight:700, marginBottom:'0.5rem' } },'Are you sure you want to delete this user?'), React.createElement('div',{ key:'actions', className:'buttons', style:{ display:'grid', gridTemplateColumns:'1fr', gap:'0.5rem', justifyItems:'center', width:'100%' } },[ React.createElement('button',{ key:'yes', className:'role-button danger', type:'button', onClick: confirmDelete, style:{ width:'94%', margin:'0 auto', textAlign:'center' } },'Delete'), React.createElement('button',{ key:'no', className:'role-button', type:'button', onClick: close, style:{ width:'94%', margin:'0 auto', textAlign:'center' } },'Cancel') ]) ]) ]); }
+
+        function Details(){ if (loading) return React.createElement('div',{ className:'container', style:{ width:'min(92vw, 560px)', margin:'0.5rem auto', padding:'0.75rem', border:'1px solid var(--border-alpha)', borderRadius:12, background:'var(--surface-alpha)', textAlign:'center' } }, 'Loading…'); if (error) return React.createElement('div',{ className:'empty', style:{ width:'min(92vw,560px)', margin:'0.5rem auto' } }, error); if (!item) return React.createElement('div',{ className:'empty', style:{ width:'min(92vw,560px)', margin:'0.5rem auto' } }, 'No data'); const c0 = String(item.course||'').trim(); const s0 = String(item.section||'').trim(); const inferred = (!c0 && s0) ? String(s0).split(' ')[0] : ''; const cc = c0 || inferred || ''; const sid = String(item.supervisorId || item.supervisorid || '').trim(); const supName = String(item.supervisorName||'').trim(); const supLabel = supName || sid || '—'; return React.createElement('div',{ className:'attendance-card', style:{ width:'min(92vw,560px)', margin:'0.5rem auto' } },[
+          React.createElement('div',{ key:'name', className:'stat-label' }, (item.name||'(No name)') + ' (' + id + ')'),
+          React.createElement('div',{ key:'course', className:'stat-label' }, 'Course: ' + (cc || '—')),
+          React.createElement('div',{ key:'section', className:'stat-label' }, 'Section: ' + (item.section || '—')),
+          React.createElement('div',{ key:'supervisor', className:'stat-label' }, 'Supervisor: ' + supLabel),
+          React.createElement('div',{ key:'actions', className:'buttons', style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem', width:'100%', marginTop:'0.75rem' } },[
+            React.createElement('button',{ key:'edit', className:'role-button neutral', type:'button', onClick: ()=>setEditing(item) }, '✏️ Edit'),
+            React.createElement('button',{ key:'del', className:'role-button danger', type:'button', onClick: ()=>setToDelete(id) }, '🗑 Delete')
+          ])
+        ]); }
+
+        const backHref = hasCourseParam ? ('/coordinator/students.html?course=' + encodeURIComponent(courseParam)) : '/coordinator/students.html';
+        return React.createElement('main',{ className:'container' },[
+          React.createElement('h1',{ key:'t', className:'title' },'OJTonTrack'),
+          React.createElement('p',{ key:'sub', className:'subtitle' }, 'Coordinator — ' + (hasCourseParam ? (courseParam || 'UNKNOWN') : (course || 'UNKNOWN')) + ' — Student Details'),
+          React.createElement(Details,{ key:'details' }),
+          React.createElement(ModalEdit,{ key:'editModal' }),
+          React.createElement(DeleteConfirm,{ key:'deleteConfirm' }),
+          React.createElement('div',{ key:'backwrap', className:'buttons', style:{ width:'min(92vw,560px)', margin:'1rem auto 0', display:'grid', gridTemplateColumns:'1fr', gap:'0.5rem', justifyItems:'stretch' } },[
+            React.createElement('a',{ key:'back', className:'role-button', href: backHref, style:{ width:'100%' } },'Back')
+          ])
+        ]);
+      }
+      (function(){ const el = document.getElementById('root'); if (!window.React || !window.ReactDOM) { if (el) el.innerHTML = '<div style="width:min(92vw,560px);margin:2rem auto;padding:1rem;border:2px solid #d1d5db;border-radius:10px;background:#fff;text-align:center;font-weight:700;">Failed to load UI. Check internet connection for CDN scripts.</div>'; return; } try { const root = ReactDOM.createRoot(el); root.render(React.createElement(Page)); } catch (e) { if (el) el.innerHTML = '<div style="width:min(92vw,560px);margin:2rem auto;padding:1rem;border:2px solid #d1d5db;border-radius:10px;background:#fff;text-align:center;font-weight:700;">Page error: ' + String(e && e.message || 'Unknown') + '</div>'; } })();
+    </script>
+  </body>
+</html>

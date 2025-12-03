@@ -1,0 +1,46 @@
+[
+  {
+    "idNumber": "coord123",
+    "courses": [
+      "BSIT",
+      "BSIS"
+    ]
+  },
+  {
+    "idNumber": "COOR102",
+    "courses": [
+      "BSIS",
+      "BSIT",
+      "BSCS"
+    ]
+  },
+  {
+    "idNumber": "COOR103",
+    "courses": [
+      "BSIT",
+      "BSIS"
+    ]
+  },
+  {
+    "idNumber": "COOR200",
+    "courses": [
+      "BSIT",
+      "BSIS"
+    ]
+  },
+  {
+    "idNumber": "COOR101",
+    "courses": [
+      "BSIT",
+      "BSIS",
+      "BSCS"
+    ]
+  },
+  {
+    "idNumber": "INS103",
+    "courses": [
+      "BSIT",
+      "BSIS"
+    ]
+  }
+]

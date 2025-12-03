@@ -1,0 +1,10 @@
+[
+  {
+    "idNumber": "45678",
+    "password": "password123",
+    "name": "Panget",
+    "course": "BSCS",
+    "section": "4A",
+    "supervisorId": "SUP101"
+  }
+]

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack — Attendance Confirmation</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container centered">
+      <div class="dashboard-main center-page">
+        <h2 class="welcome">Attendance Confirmation</h2>
+        <p class="subtitle accent">Review and confirm student logs</p>
+        <div class="attendance-card">
+          <div style="font-weight:700;margin-bottom:8px">Pending Time-in/out logs</div>
+          <div id="pendingBox" class="recent-scroll small" style="text-align:left"><div>Loading…</div></div>
+        </div>
+        <div class="attendance-card" style="margin-top:12px">
+          <div style="font-weight:700;margin-bottom:8px">Confirmed Attendance Logs</div>
+          <div id="confirmedBox" class="recent-scroll small" style="text-align:left"><div>Loading…</div></div>
+        </div>
+      </div>
+    </main>
+    <nav class="student-nav">
+      <div class="student-nav-inner">
+        <a href="/supervisor/dashboard.html" aria-label="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7"/><path d="M5 11v9h14v-9"/></svg>
+        </a>
+        <a href="/supervisor/attendance.html" class="active" aria-label="Attendance">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </a>
+        <a href="/supervisor/students-logs.html" aria-label="Logs">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 012-2h10"/><path d="M20 7v12a2 2 0 01-2 2H6"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h6"/></svg>
+        </a>
+        <a href="/supervisor/profile.html" aria-label="Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/config.js"></script>
+    <script>
+      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      async function ensureAuth() { const r = await fetch('/api/me', { headers: authHeaders() }); if (!r.ok) { window.location.replace('/index.html'); throw new Error('auth'); } return r.json(); }
+      function fmtWhen(ts) { return new Date(ts).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+      let nameMapCache = null;
+      async function getNameMap(){
+        if (nameMapCache) return nameMapCache;
+        try {
+          const r = await fetch('/api/supervisor/students', { headers: authHeaders(), cache: 'no-store' });
+          const j = await r.json();
+          const rows = r.ok && j.ok ? (Array.isArray(j.data) ? j.data : []) : [];
+          nameMapCache = new Map((rows||[]).map(s => [String(s.idNumber||s.id_number||''), String(s.name||s.idNumber||'').trim().split(/\s+/)[0]]));
+        } catch { nameMapCache = new Map(); }
+        return nameMapCache;
+      }
+      async function loadPending() {
+        const box = document.getElementById('pendingBox');
+        box.innerHTML = '';
+        for (let i=0;i<4;i++){ const sk=document.createElement('div'); sk.className='skeleton skeleton-line'; box.appendChild(sk); }
+        try {
+          const me = await ensureAuth();
+          const meId = String(me.data?.id_number || me.data?.idNumber || '');
+          const nm = await getNameMap();
+          try { const c = JSON.parse(sessionStorage.getItem('sup:pending:'+meId)||'[]'); if(Array.isArray(c)&&c.length){ box.innerHTML=''; c.forEach(x=>{ const line=document.createElement('div'); const action = x.type === 'in' ? 'Timed in' : 'Timed out'; const who = nm.get(String(x.idNumber||'')) || x.idNumber; line.textContent = `${who} ${action} in ${fmtWhen(x.ts)}`; const btn=document.createElement('button'); btn.className='role-button'; btn.type='button'; btn.textContent='Confirm'; btn.style.marginLeft='8px'; btn.addEventListener('click', async function(){ await confirmLog(x.id); }); line.appendChild(btn); box.appendChild(line); }); } } catch {}
+          const r = await fetch('/api/supervisor/attendance/pending', { headers: authHeaders(), cache: 'no-store' });
+          const j = await r.json();
+          const rows = r.ok && j.ok ? (Array.isArray(j.data) ? j.data : []) : [];
+          if (!rows.length) { box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%"><div style="text-align:center;padding:16px;border-radius:12px;background:var(--surface-alpha);box-shadow:0 4px 10px rgba(0,0,0,0.08);width:100%"><div style="font-size:20px">📭</div><div style="font-weight:700;margin-top:4px">No pending logs</div><div style="font-size:12px;opacity:0.7">All logs are up-to-date.</div></div></div>'; return; }
+          box.innerHTML = '';
+          rows.forEach(x => {
+            const item = document.createElement('div'); item.className='recent-item';
+            item.style.padding='10px 12px'; item.style.margin='8px 0'; item.style.borderRadius='12px'; item.style.background='var(--surface-alpha)'; item.style.boxShadow='0 4px 10px rgba(0,0,0,0.08)';
+            const title = document.createElement('div'); title.className='recent-title'; title.textContent = x.type==='in'?'🕒 Time In':'🕒 Time Out';
+            const who = nm.get(String(x.idNumber||'')) || x.idNumber;
+            const sub = document.createElement('div'); sub.className='recent-sub'; sub.style.opacity='0.8'; sub.style.fontSize='0.9rem'; sub.textContent = `${who} • ${fmtWhen(x.ts)}`;
+            const pill=document.createElement('span'); pill.className='status-pill status-pending'; pill.textContent = 'Pending'; sub.appendChild(pill);
+            const actions = document.createElement('div'); actions.className='recent-actions'; actions.style.display='flex'; actions.style.alignItems='center'; actions.style.justifyContent='center'; actions.style.gap='8px'; actions.style.marginTop='8px';
+            const btn = document.createElement('button');
+            btn.className = 'role-button primary';
+            btn.type = 'button';
+            btn.textContent = 'Confirm';
+            btn.addEventListener('click', async function(){ await confirmLog(x.id, btn, item); });
+            actions.appendChild(btn);
+            item.appendChild(title); item.appendChild(sub); item.appendChild(actions);
+            box.appendChild(item);
+          });
+          try { sessionStorage.setItem('sup:pending:'+meId, JSON.stringify(rows.slice(0,50))); } catch {}
+        } catch { box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%"><div style="text-align:center;padding:16px;border-radius:12px;background:var(--surface-alpha);box-shadow:0 4px 10px rgba(0,0,0,0.08);width:100%"><div style="font-size:20px">📭</div><div style="font-weight:700;margin-top:4px">No pending logs</div><div style="font-size:12px;opacity:0.7">All logs are up-to-date.</div></div></div>'; }
+      }
+      async function loadConfirmed() {
+        const box = document.getElementById('confirmedBox');
+        box.innerHTML = '';
+        for (let i=0;i<4;i++){ const sk=document.createElement('div'); sk.className='skeleton skeleton-line'; box.appendChild(sk); }
+        try {
+          const me = await ensureAuth();
+          const meId = String(me.data?.id_number || me.data?.idNumber || '');
+          const nm = await getNameMap();
+          try { const c = JSON.parse(sessionStorage.getItem('sup:confirmed:'+meId)||'[]'); if(Array.isArray(c)&&c.length){ box.innerHTML=''; c.forEach(x=>{ const line=document.createElement('div'); const action = x.type === 'in' ? 'Timed in' : 'Timed out'; const who = nm.get(String(x.idNumber||'')) || x.idNumber; const d = new Date(Number(x.ts||Date.now())); const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' }); line.textContent = `${who} ${action} in ${fmtWhen(x.ts)} — Confirmed at ${time}`; box.appendChild(line); }); } } catch {}
+          const r = await fetch('/api/supervisor/attendance/confirmed', { headers: authHeaders(), cache: 'no-store' });
+          const j = await r.json();
+          const rows = r.ok && j.ok ? (Array.isArray(j.data) ? j.data : []) : [];
+          if (!rows.length) { box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%"><div style="text-align:center;padding:16px;border-radius:12px;background:var(--surface-alpha);box-shadow:0 4px 10px rgba(0,0,0,0.08);width:100%"><div style="font-size:20px">📭</div><div style="font-weight:700;margin-top:4px">No confirmed logs yet</div><div style="font-size:12px;opacity:0.7">Please check back later.</div></div></div>'; return; }
+          box.innerHTML = '';
+          rows.forEach(x => {
+            const item = document.createElement('div'); item.className='recent-item';
+            item.style.padding='10px 12px'; item.style.margin='8px 0'; item.style.borderRadius='12px'; item.style.background='var(--surface-alpha)'; item.style.boxShadow='0 4px 10px rgba(0,0,0,0.08)';
+            const title = document.createElement('div'); title.className='recent-title'; title.textContent = x.type==='in'?'🕒 Time In':'🕒 Time Out';
+            const who = nm.get(String(x.idNumber||'')) || x.idNumber;
+            const sub = document.createElement('div'); sub.className='recent-sub'; sub.style.opacity='0.8'; sub.style.fontSize='0.9rem'; sub.textContent = `${who} • ${fmtWhen(x.ts)}`;
+            const pill=document.createElement('span'); pill.className='status-pill status-confirmed'; pill.textContent = 'Confirmed at ' + (new Date(Number(x.ts||Date.now())).toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' })); sub.appendChild(pill);
+            item.appendChild(title); item.appendChild(sub);
+            box.appendChild(item);
+          });
+          try { sessionStorage.setItem('sup:confirmed:'+meId, JSON.stringify(rows.slice(0,50))); } catch {}
+        } catch { box.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%"><div style="text-align:center;padding:16px;border-radius:12px;background:var(--surface-alpha);box-shadow:0 4px 10px rgba(0,0,0,0.08);width:100%"><div style="font-size:20px">📭</div><div style="font-weight:700;margin-top:4px">No confirmed logs yet</div><div style="font-size:12px;opacity:0.7">Please check back later.</div></div></div>'; }
+      }
+      async function confirmLog(id, btn, line) {
+        if (!id) return;
+        try {
+          if (btn) { btn.disabled = true; btn.textContent = 'Confirming…'; }
+          const r = await fetch('/api/supervisor/attendance/confirm', { method: 'POST', headers: authHeaders(true), cache: 'no-store', body: JSON.stringify({ id }) });
+          let j = {};
+          try { j = await r.json(); } catch {}
+          const ok = !!(r.ok && j && j.ok);
+          if (ok) {
+            if (btn) { btn.textContent = 'Confirmed'; }
+            if (line && line.parentNode) { try { line.parentNode.removeChild(line); } catch {} }
+            loadConfirmed();
+          } else {
+            if (btn) { btn.disabled = false; btn.textContent = 'Confirm'; }
+            const err = (j && j.error) ? String(j.error) : `Error ${r.status}`;
+            alert(err);
+          }
+        } catch {
+          if (btn) { btn.disabled = false; btn.textContent = 'Confirm'; }
+          alert('Network error');
+        }
+      }
+      document.addEventListener('DOMContentLoaded', async function(){ try { const me = await ensureAuth(); loadPending(); loadConfirmed(); const course = String(me?.data?.course || me?.data?.courseCode || ''); const sb = window.supabase?.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY); if (sb) { let listen = { event:'*', schema:'public', table:'attendance' }; if (course) listen = { event:'*', schema:'public', table:'attendance', filter:'course=eq.'+course }; const ch = sb.channel('sup-att:'+(course||'all')); ch.on('postgres_changes', listen, function(){ loadPending(); loadConfirmed(); }); ch.on('broadcast', { event:'attendance' }, function(){ loadPending(); loadConfirmed(); }); ch.subscribe(); } try { setInterval(function(){ loadPending(); loadConfirmed(); }, 3000); } catch {} } catch {} });
+    </script>
+    <script>
+      (function(){
+        const nav = document.querySelector('.student-nav'); if (!nav) return; nav.classList.add('slideable');
+        let startY=null, lastY=null, moved=0;
+        function start(e){ const t=e.touches?e.touches[0]:e; startY=t.clientY; lastY=startY; moved=0; }
+        function move(e){ const t=e.touches?e.touches[0]:e; lastY=t.clientY; moved=lastY-startY; }
+        function end(){ if (moved>30) { document.body.classList.add('nav-hidden'); } else if (moved<-30) { document.body.classList.remove('nav-hidden'); } else { document.body.classList.toggle('nav-hidden'); } startY=null; lastY=null; moved=0; }
+        nav.addEventListener('touchstart', start, { passive:true });
+        nav.addEventListener('touchmove', move, { passive:true });
+        nav.addEventListener('touchend', end);
+        nav.addEventListener('mousedown', start);
+        nav.addEventListener('mousemove', function(e){ if (startY!==null) move(e); });
+        nav.addEventListener('mouseup', end);
+      })();
+    </script>
+  </body>
+</html>

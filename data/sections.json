@@ -1,0 +1,9 @@
+[
+  {
+    "id": "SEC-IT-3A",
+    "name": "BSIT 3A",
+    "instructorId": "INS3001",
+    "students": ["S1001"],
+    "term": "1st Sem AY 2025-2026"
+  }
+]

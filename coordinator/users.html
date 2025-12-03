@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack — Coordinator Users</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      async function getMe() { const r = await fetch('/api/me'); if (!r.ok) { window.location.replace('/index.html'); throw new Error('auth'); } return r.json(); }
+      function UsersPage() {
+        const [course, setCourse] = React.useState('');
+        const [courses, setCourses] = React.useState([]);
+        React.useEffect(() => { (async ()=>{ try { const j = await getMe(); setCourse(String(j.data?.course || '')); const arr = Array.isArray(j.data?.courses) ? j.data.courses.filter(Boolean).map(String) : []; setCourses(arr); } catch {} })(); }, []);
+        return React.createElement('main', { className: 'container centered' }, [
+          React.createElement('div', { key: 'wrap', className: 'dashboard-main center-page' }, [
+            React.createElement('h1', { key: 't', className: 'title' }, 'OJTonTrack'),
+            React.createElement('p', { key: 'sub', className: 'subtitle' }, (courses && courses.length) ? `Coordinator — ${courses.join(', ')} — Users` : (course ? `Coordinator — ${course} — Users` : 'Coordinator — Users')),
+            React.createElement('div', { key: 'tabs', className: 'buttons' }, [
+              React.createElement('a', { key: 'instructors', className: 'role-button', href: '/coordinator/instructors.html' }, 'Instructors'),
+              React.createElement('a', { key: 'supervisors', className: 'role-button', href: '/coordinator/supervisors-select.html' }, 'Supervisors'),
+              React.createElement('a', { key: 'students', className: 'role-button', href: '/coordinator/students-select.html' }, 'Students'),
+              React.createElement('a', { key: 'back', className: 'role-button', href: '/coordinator/dashboard.html' }, 'Back to Dashboard')
+            ])
+          ])
+        ]);
+      }
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(UsersPage));
+    </script>
+  </body>
+</html>

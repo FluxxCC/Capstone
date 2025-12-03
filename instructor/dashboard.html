@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Instructor — Dashboard</title>
+    <meta name="theme-color" content="#111827" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="/config.js"></script>
+    <style>
+      .tile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:.75rem}
+      .dash-tile{display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:24px;border-radius:16px;min-height:120px;box-shadow:0 8px 16px rgba(2,6,23,0.08);text-decoration:none;color:#111827;transition:transform .15s ease, box-shadow .15s ease}
+      .dash-tile:hover{transform:translateY(-2px);box-shadow:0 12px 22px rgba(2,6,23,0.12)}
+      .tile-icon{font-size:32px;margin-bottom:6px}
+      .tile-title{font-weight:700}
+      .tile-sub{font-size:.9rem;margin-top:2px;opacity:.72;color:var(--muted)}
+      .tile-orange{background:linear-gradient(135deg,#ffedd5,#fed7aa)}
+      .dashboard-main .welcome{margin-top:14px}
+      .dashboard-main .subtitle{font-size:.95rem;font-weight:500;opacity:.9;margin-top:4px}
+      .student-nav{background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);box-shadow:0 -6px 12px rgba(2,6,23,0.08);border-top:1px solid var(--border-alpha)}
+      .student-nav-inner{align-items:center}
+      .student-nav a.active svg path{fill:#111827;stroke:none}
+      .student-nav a.active::after{content:attr(aria-label);display:block;margin-top:4px;font-size:12px;font-weight:600;color:#111827}
+    </style>
+  </head>
+  <body>
+    <main class="container centered">
+      <div class="dashboard-main center-page">
+        <h2 class="welcome">Welcome back, <span id="lastName">Instructor</span>!</h2>
+        <p class="subtitle accent">You’re on track with OJTonTrack 🚀</p>
+        <div class="tile-grid">
+          <a href="/instructor/students-select.html" class="dash-tile tile-orange">
+            <div class="tile-icon">👥</div>
+            <div class="tile-title">Students</div>
+            <div class="tile-sub">Sections handled: <span id="sectionsCount">—</span></div>
+          </a>
+        </div>
+        <div class="recent-label" style="margin-top:16px">Recent Activity</div>
+        <div class="recent-scroll small" id="recentBox"><div>Loading…</div></div>
+      </div>
+    </main>
+    
+    <nav class="student-nav">
+      <div class="student-nav-inner">
+        <a href="/instructor/dashboard.html" class="active" aria-label="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7"/><path d="M5 11v9h14v-9"/></svg>
+        </a>
+        <a href="/instructor/students.html" aria-label="Logs">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </a>
+        <a href="/instructor/reports.html" aria-label="Reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 012-2h10"/><path d="M20 7v12a2 2 0 01-2 2H6"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h6"/></svg>
+        </a>
+        <a href="/instructor/profile.html" aria-label="Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+
+    <script>
+      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function getLastName(n){ const p = String(n || '').trim().split(/\s+/); return p.length ? p[p.length-1] : ''; }
+      document.addEventListener('DOMContentLoaded', async function(){
+        try {
+          const meR = await fetch('/api/me', { headers: authHeaders(), cache: 'no-store' });
+          const meJ = await meR.json().catch(()=>({}));
+          const ln = String(meJ.data?.lastName || '').trim() || getLastName(meJ.data?.name || '');
+          document.getElementById('lastName').textContent = ln || 'Instructor';
+          try {
+            const sc = document.getElementById('sectionsCount');
+            let count = 0;
+            try {
+              const rA = await fetch('/api/instructor/me/assignments', { headers: authHeaders(), cache: 'no-store' });
+              const jA = await rA.json().catch(()=>({}));
+              if (rA.ok && jA.ok) {
+                const arrA = Array.isArray(jA.data?.sections) ? jA.data.sections.map(String).filter(Boolean) : [];
+                count = Array.from(new Set(arrA)).length;
+              }
+            } catch {}
+            if (!count) {
+              const arr = Array.isArray(meJ.data?.sections) ? meJ.data.sections : [];
+              const unique = Array.from(new Set(arr.map(String).filter(Boolean)));
+              if (unique.length) count = unique.length;
+              else {
+                const primary = String(meJ.data?.section || '').trim();
+                count = primary ? 1 : 0;
+              }
+            }
+            if (sc) sc.textContent = String(count);
+          } catch {}
+          try {
+            const recentBox = document.getElementById('recentBox');
+            if (recentBox) {
+              recentBox.innerHTML = '<div>Loading…</div>';
+              const [attRes, repRes] = await Promise.all([
+                fetch('/api/instructor/students/activity', { headers: authHeaders(), cache: 'no-store' }),
+                fetch('/api/instructor/reports/activity', { headers: authHeaders(), cache: 'no-store' })
+              ]);
+              const [attJ, repJ] = await Promise.all([attRes.json().catch(()=>({})), repRes.json().catch(()=>({}))]);
+              const attAll = attRes.ok && attJ.ok ? (Array.isArray(attJ.data) ? attJ.data : []) : [];
+              const repAll = repRes.ok && repJ.ok ? (Array.isArray(repJ.data) ? repJ.data : []) : [];
+              const now = Date.now();
+              const oneDayMs = 24 * 60 * 60 * 1000;
+              const cutoff = now - oneDayMs;
+              const toRows = [];
+              attAll.forEach(x => {
+                const t = Number(new Date(x.ts).getTime() || 0);
+                if (t >= cutoff) toRows.push({ ts:t, kind:'attendance', type:String(x.type||''), status:String(x.status||''), name:String(x.name||x.idNumber||''), id:String(x.idNumber||''), course:String(x.course||''), section:String(x.section||'') });
+              });
+              repAll.forEach(x => {
+                const t = Number(new Date(x.ts).getTime() || 0);
+                if (t >= cutoff) toRows.push({ ts:t, kind:'report', title:String(x.title||'Report'), status:String(x.status||''), name:String(x.name||x.idNumber||''), id:String(x.idNumber||''), course:String(x.course||''), section:String(x.section||'') });
+              });
+              toRows.sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
+              if (!toRows.length) { recentBox.innerHTML = '<div>No activity in the last 24 hours</div>'; }
+              else {
+                recentBox.innerHTML = '';
+                toRows.forEach(x => {
+                  const d = new Date(Number(x.ts||Date.now()));
+                  const date = d.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' });
+                  const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' });
+                  const el = document.createElement('div'); el.className='recent-item';
+                  el.style.padding='10px 12px'; el.style.margin='8px 0'; el.style.borderRadius='12px'; el.style.background='var(--surface-alpha)'; el.style.boxShadow='0 4px 10px rgba(0,0,0,0.08)';
+                  const title = document.createElement('div'); title.className='recent-title';
+                  if (x.kind==='attendance') { title.textContent = (x.type==='in' ? '🕒 Time-in' : '🕒 Time-out'); }
+                  else { title.textContent = '📄 ' + String(x.title||'Report'); }
+                  const sub = document.createElement('div'); sub.className='recent-sub';
+                  const cTxt = String(x.course||'').trim();
+                  const sTxt = String(x.section||'').trim();
+                  sub.textContent = String(x.name||x.id||'') + ' — ' + date + ' ' + time + ' • Course: ' + (cTxt || '—') + ' • Section: ' + (sTxt || '—');
+                  el.appendChild(title); el.appendChild(sub);
+                  recentBox.appendChild(el);
+                });
+              }
+            }
+          } catch { const recentBox = document.getElementById('recentBox'); if (recentBox) recentBox.innerHTML = '<div>No activity yet</div>'; }
+        } catch {}
+      });
+    </script>
+    <script>
+      (function(){
+        const nav = document.querySelector('.student-nav'); if (!nav) return; nav.classList.add('slideable');
+        let startY=null, lastY=null, moved=0;
+        function start(e){ const t=e.touches?e.touches[0]:e; startY=t.clientY; lastY=startY; moved=0; }
+        function move(e){ const t=e.touches?e.touches[0]:e; lastY=t.clientY; moved=lastY-startY; }
+        function end(){ if (moved>30) { document.body.classList.add('nav-hidden'); } else if (moved<-30) { document.body.classList.remove('nav-hidden'); } else { document.body.classList.toggle('nav-hidden'); } startY=null; lastY=null; moved=0; }
+        nav.addEventListener('touchstart', start, { passive:true });
+        nav.addEventListener('touchmove', move, { passive:true });
+        nav.addEventListener('touchend', end);
+        nav.addEventListener('mousedown', start);
+        nav.addEventListener('mousemove', function(e){ if (startY!==null) move(e); });
+        nav.addEventListener('mouseup', end);
+      })();
+    </script>
+  </body>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function(){
+        navigator.serviceWorker.register('/service-worker.js').catch(function(){});
+      });
+    }
+  </script>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack — Coordinator Dashboard</title>
+    <meta name="theme-color" content="#111827" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      async function getMe() { const r = await fetch('/api/me', { headers: authHeaders() }); if (!r.ok) { window.location.replace('/index.html'); throw new Error('auth'); } return r.json(); }
+      function Dashboard() {
+        const [courses, setCourses] = React.useState([]);
+        const [name, setName] = React.useState('');
+        React.useEffect(() => { (async ()=>{ try { const j = await getMe(); const arr = Array.isArray(j.data?.courses) ? j.data.courses : []; const single = String(j.data?.course || '').trim(); setCourses(arr.length ? arr : (single ? [single] : [])); setName(String(j.data?.name || '')); } catch {} })(); }, []);
+        function hrefUsers() { return `/coordinator/users.html`; }
+        function logout() {
+          fetch('/api/logout', { method: 'POST' }).catch(()=>{});
+          try { sessionStorage.removeItem('selectedRole'); sessionStorage.removeItem('userAuth'); sessionStorage.removeItem('userToken'); } catch {}
+          window.location.href = '/';
+        }
+        return React.createElement('main', { className: 'container centered' }, [
+          React.createElement('div', { key: 'wrap', className: 'dashboard-main center-page' }, [
+            React.createElement('h1', { key: 't', className: 'title' }, 'OJTonTrack'),
+            React.createElement('p', { key: 'sub', className: 'subtitle' }, `Coordinator (${name || ''}) — ${(Array.isArray(courses) && courses.length) ? courses.join(' • ') : 'UNKNOWN'} — Dashboard`),
+            React.createElement('div', { key: 'actions', className: 'buttons' }, [
+              React.createElement('a', { key: 'users', className: 'role-button', href: hrefUsers() }, 'Manage Users'),
+              React.createElement('button', { key: 'logout', className: 'role-button', onClick: logout }, 'Logout')
+            ])
+          ])
+        ]);
+      }
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(Dashboard));
+    </script>
+  </body>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function(){
+        navigator.serviceWorker.register('/service-worker.js').catch(function(){});
+      });
+    }
+  </script>
+</html>

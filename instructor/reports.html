@@ -1,0 +1,270 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Instructor — Reports</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container centered">
+      <div class="dashboard-main center-page">
+        <div class="attendance-card" style="margin-top:0.25rem">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:flex-start;font-size:18px;font-weight:700;margin-bottom:8px">
+            <div>PENDING REPORTS</div>
+          </div>
+          <div class="search-wrap" style="margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div style="position:relative;flex:1;min-width:220px">
+                <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;opacity:0.75">🔍</span>
+                <input id="searchInput" class="input" type="text" placeholder="Search reports or students" style="width:100%;padding-left:32px;border:1px solid #ccc" />
+              </div>
+            </div>
+          </div>
+          <div id="reportsHeader" style="font-weight:800;margin:6px 0">Reports (0)</div>
+          <div style="height:1px;background:#e5e7eb;margin:0 0 8px"></div>
+          <div class="recent-scroll small" id="reportsList" style="max-height:60vh;overflow-y:auto"><div>Loading…</div></div>
+        </div>
+      </div>
+    </main>
+    <div id="photoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:#fff;padding:10px;border-radius:10px;max-width:90%;max-height:85vh;display:flex;flex-direction:column;align-items:center">
+        <img id="photoModalImg" src="" alt="file" style="max-width:100%;max-height:75vh;border-radius:8px" />
+        <button id="photoClose" class="role-button" style="margin-top:8px;padding:6px 12px">Close</button>
+      </div>
+    </div>
+    <div id="reportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div id="reportBox" style="background:#fff;padding:12px;border-radius:10px;max-width:92vw;max-height:85vh;display:flex;flex-direction:column;gap:8px">
+        <div id="reportTitle" style="font-weight:700;font-size:16px"></div>
+        <div id="reportMeta" style="color:#6b7280;font-size:13px"></div>
+        <div id="reportContent" class="recent-scroll small" style="max-height:60vh;overflow-y:auto"></div>
+        <button id="reportClose" class="role-button" style="padding:6px 12px">Close</button>
+      </div>
+    </div>
+    <div id="commentModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div id="commentBox" style="background:#fff;padding:16px;border-radius:12px;width:clamp(320px,80vw,720px);max-height:85vh;display:flex;flex-direction:column;gap:10px">
+        <div id="commentTitle" style="font-weight:700;font-size:16px">Write a comment</div>
+        <div id="commentEditor" contenteditable="true" style="width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:10px;min-height:120px"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button id="commentSend" class="role-button" style="padding:6px 12px">Send</button>
+          <button id="commentClose" class="role-button" style="padding:6px 12px">Close</button>
+        </div>
+      </div>
+    </div>
+    <div id="noticeModal" style="display:none;position:fixed;inset:0;background:#fff;z-index:1000;align-items:center;justify-content:center">
+      <div style="background:#fff;padding:12px;border-radius:10px;max-width:80vw;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center">
+        <div id="noticeText" style="font-weight:600">Please view the report first</div>
+        <button id="noticeClose" class="role-button" style="padding:6px 12px;width:auto">OK</button>
+      </div>
+    </div>
+    <div id="confirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:#fff;padding:16px;border-radius:12px;width:clamp(300px,70vw,520px);display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center">
+        <div id="confirmText" style="font-weight:700">Are you sure you want to send this?</div>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button id="confirmYes" class="role-button" style="padding:6px 12px">Yes</button>
+          <button id="confirmNo" class="role-button" style="padding:6px 12px">Cancel</button>
+        </div>
+      </div>
+    </div>
+    
+    <nav class="student-nav">
+      <div class="student-nav-inner">
+        <a href="/instructor/dashboard.html" aria-label="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7"/><path d="M5 11v9h14v-9"/></svg>
+        </a>
+        <a href="/instructor/students.html" aria-label="Logs">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </a>
+        <a href="/instructor/reports.html" class="active" aria-label="Reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 012-2h10"/><path d="M20 7v12a2 2 0 01-2 2H6"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h6"/></svg>
+        </a>
+        <a href="/instructor/profile.html" aria-label="Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/config.js"></script>
+    <script>
+      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function fmtWhen(ts){ const d = new Date(Number(ts||Date.now())); const date = d.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' }); const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' }); return date + ' • ' + time; }
+      function viewFile(url, type){ if (/^image\//.test(String(type||''))) { const m=document.getElementById('photoModal'); const img=document.getElementById('photoModalImg'); img.src=url; m.style.display='flex'; } else { window.open(url, '_blank', 'noreferrer'); } }
+      function downloadFile(url){ const a=document.createElement('a'); a.href=url; a.download=''; document.body.appendChild(a); a.click(); a.remove(); }
+      function makeIcon(svg){ const b=document.createElement('button'); b.className='role-button'; b.type='button'; b.style.width='32px'; b.style.height='32px'; b.style.padding='0'; b.style.display='flex'; b.style.alignItems='center'; b.style.justifyContent='center'; b.style.border='1px solid #d1d5db'; b.style.borderRadius='8px'; b.style.background='#fff'; b.style.color='#6b7280'; b.innerHTML=svg; const s=b.querySelector('svg'); if (s) { s.setAttribute('width','20'); s.setAttribute('height','20'); s.setAttribute('stroke','currentColor'); } return b; }
+      function showNotice(text){ const m=document.getElementById('noticeModal'); const t=document.getElementById('noticeText'); t.textContent=String(text||''); m.style.display='flex'; }
+      function confirmAction(text, onYes){ const cm=document.getElementById('confirmModal'); const ct=document.getElementById('confirmText'); const cy=document.getElementById('confirmYes'); const cn=document.getElementById('confirmNo'); ct.textContent=String(text||''); cm.style.display='flex'; const ok=function(){ cm.style.display='none'; cy.removeEventListener('click', ok); cn.removeEventListener('click', no); onYes&&onYes(); }; const no=function(){ cm.style.display='none'; cy.removeEventListener('click', ok); cn.removeEventListener('click', no); }; cy.addEventListener('click', ok); cn.addEventListener('click', no); }
+      function sanitizeHtml(html){ const allowed=new Set(['P','BR','STRONG','EM','B','I','U','UL','OL','LI']); const tmp=document.createElement('div'); tmp.innerHTML=String(html||''); const walker=document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT, null); const nodes=[]; while(walker.nextNode()) nodes.push(walker.currentNode); nodes.forEach(el=>{ if(!allowed.has(el.tagName)){ const parent=el.parentNode; if(parent){ while(el.firstChild) parent.insertBefore(el.firstChild, el); parent.removeChild(el); } } else { const attrs=[...el.attributes]; for(const a of attrs) el.removeAttribute(a.name); } }); return tmp.innerHTML; }
+      function showReportModal(x){ const m=document.getElementById('reportModal'); const t=document.getElementById('reportTitle'); const meta=document.getElementById('reportMeta'); const c=document.getElementById('reportContent'); t.textContent=String(x.title||'(Untitled)'); meta.textContent=`Submitted ${fmtWhen(x.ts)} by ${String(x.name||x.idNumber||'')}`; const txt=String(x.text||'').trim(); const safe=sanitizeHtml(txt); if (safe) { c.innerHTML=safe; } else { c.textContent='(No text)'; } m.style.display='flex'; }
+      async function showCommentModal(x){ const m=document.getElementById('commentModal'); const editor=document.getElementById('commentEditor'); const send=document.getElementById('commentSend'); const cm=document.getElementById('confirmModal'); const ct=document.getElementById('confirmText'); const cy=document.getElementById('confirmYes'); const cn=document.getElementById('confirmNo'); function askConfirm(text, onYes){ ct.textContent=String(text||''); cm.style.display='flex'; const ok=function(){ cm.style.display='none'; cy.removeEventListener('click', ok); cn.removeEventListener('click', no); m.style.display='none'; onYes&&onYes(); }; const no=function(){ cm.style.display='none'; cy.removeEventListener('click', ok); cn.removeEventListener('click', no); }; cy.addEventListener('click', ok); cn.addEventListener('click', no); }
+        editor.innerHTML=''; send.disabled=false; send.onclick=async function(ev){ ev?.preventDefault?.(); ev?.stopPropagation?.(); if(send.disabled) return; const text=String(editor.innerText||'').trim(); if(!text) return; askConfirm('Are you sure you want to send this?', async function(){ send.disabled=true; try{ const r=await fetch('/api/instructor/reports/comment',{ method:'POST', headers: authHeaders(true), body: JSON.stringify({ id: x.id, text }) }); const j=await r.json(); if(r.ok&&j.ok){ editor.innerHTML=''; } else { alert(j.error||'Failed'); } } catch { alert('Network error'); } send.disabled=false; }); }; m.style.display='flex'; }
+      document.addEventListener('DOMContentLoaded', async function(){
+        const box = document.getElementById('reportsList');
+        const search = document.getElementById('searchInput');
+        const header = document.getElementById('reportsHeader');
+
+        box.innerHTML = '<div>Loading…</div>';
+        let all = [];
+        const viewed = new Set();
+        const downloaded = new Set();
+        try {
+          const meR = await fetch('/api/me', { headers: authHeaders() });
+          const meJ = await meR.json();
+          if (!(meR.ok && meJ.ok)) { window.location.replace('/index.html'); return; }
+          const meSection = String(meJ.data?.section || '').trim();
+          try { const c = JSON.parse(sessionStorage.getItem('inst:reports:'+String(meJ.data?.course||meJ.data?.courseCode||''))||'[]'); if(Array.isArray(c)&&c.length){ all=c; } } catch {}
+          const r = await fetch('/api/instructor/reports/activity?all=1', { headers: authHeaders() });
+          const j = await r.json();
+          all = (r.ok && j.ok && Array.isArray(j.data)) ? j.data : [];
+          try { sessionStorage.setItem('inst:reports:'+String(meJ.data?.course||meJ.data?.courseCode||''), JSON.stringify(all.slice(0,200))); } catch {}
+          try { const course=String(meJ.data?.course||meJ.data?.courseCode||''); const sb=window.supabase?.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY); if (sb && course) { sb.channel('inst-rep:'+course).on('postgres_changes', { event:'*', schema:'public', table:'reports', filter:'course=eq.'+course }, function(){ const f=applyFilters(all); render(); }).subscribe(); } } catch {}
+          
+        } catch { box.innerHTML = '<div>No activity yet</div>'; return; }
+        function statusText(s){ if (String(s||'')==='under_review') return 'Under Review'; if (String(s||'')==='accepted') return 'Accepted'; if (String(s||'')==='rejected') return 'Rejected'; return 'Draft'; }
+        function applyFilters(rows){ const q=String(search.value||'').toLowerCase(); return rows.filter(x=>{ const name=String(x.name||x.idNumber||'').toLowerCase(); const title=String(x.title||'').toLowerCase(); if (q && !(name.includes(q)||title.includes(q))) return false; return true; }); }
+        function render(){
+          const rows = applyFilters(all).sort((a,b)=>Number(b.ts||0)-Number(a.ts||0)).slice(0,200);
+          try { if (header) header.textContent = 'Reports (' + rows.length + ')'; } catch {}
+          if (rows.length) {
+            box.innerHTML = '';
+            rows.forEach(x => {
+              const item = document.createElement('div');
+              item.style.border = '1px solid #e5e7eb';
+              item.style.borderRadius = '10px';
+              item.style.padding = '10px 12px';
+              item.style.display = 'flex';
+              item.style.flexDirection = 'column';
+              item.style.gap = '6px';
+              const who = String(x.name || x.idNumber || '');
+              const lineWho = document.createElement('div');
+              lineWho.className = 'recent-title';
+              lineWho.textContent = '👤 ' + who;
+              const files = Array.isArray(x.files) ? x.files : [];
+              const first = files[0] || {};
+              if (first && first.name) {
+                const fileTitle = document.createElement('div');
+                fileTitle.style.fontWeight = '700';
+                fileTitle.style.color = '#6b7280';
+                fileTitle.textContent = '📄 ' + String(first.name);
+                item.appendChild(fileTitle);
+              }
+              const meta = document.createElement('div');
+              meta.className = 'recent-sub';
+              const stText = statusText(x.status);
+              const courseTxt = String(x.course||'').trim();
+              const sectionTxt = String(x.section||'').trim();
+              meta.textContent = 'Submitted ' + fmtWhen(x.ts) + ' • Course: ' + (courseTxt || '—') + ' • Section: ' + (sectionTxt || '—') + '  ';
+              const pill = document.createElement('span');
+              pill.className = 'status-pill status-pending';
+              pill.textContent = 'Status: ' + stText;
+              pill.style.marginLeft = '6px';
+              pill.style.padding = '2px 8px';
+              pill.style.fontSize = '0.7rem';
+              meta.appendChild(pill);
+              const icons = document.createElement('div');
+              icons.style.display = 'flex';
+              icons.style.alignItems = 'center';
+              icons.style.justifyContent = 'center';
+              icons.style.gap = '8px';
+              const dl = makeIcon('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>');
+              dl.disabled = !first.url;
+              dl.addEventListener('click', function(){
+                if (first.url) {
+                  downloadFile(first.url);
+                  downloaded.add(String(x.id||''));
+                }
+              });
+              const comment = makeIcon('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 01-4 4H7l-4 4V7a4 4 0 014-4h10a4 4 0 014 4v8z"/></svg>');
+              comment.addEventListener('click', function(){ showCommentModal(x); });
+              const view = makeIcon('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>');
+              view.addEventListener('click', function(){ showReportModal(x); viewed.add(String(x.id||'')); });
+              const accept = makeIcon('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>');
+              accept.addEventListener('click', async function(){
+                if (first.url && !downloaded.has(String(x.id||''))) {
+                  const name = first && first.name ? String(first.name) : 'file';
+                  showNotice('Please Download the ' + name + ' first');
+                  return;
+                }
+                accept.disabled = true;
+                try {
+                  const r = await fetch('/api/instructor/reports/status', { method:'POST', headers: authHeaders(true), body: JSON.stringify({ id: x.id, status: 'accepted' }) });
+                  const j = await r.json();
+                  if (r.ok && j.ok) {
+                    try { x.status = 'accepted'; } catch {}
+                    render();
+                  } else { alert(j.error||'Failed'); }
+                } catch { alert('Network error'); }
+                accept.disabled = false;
+              });
+              const reject = makeIcon('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>');
+              reject.addEventListener('click', function(){
+                confirmAction('Are you sure you want to reject this report?', async function(){
+                  reject.disabled = true;
+                  try {
+                    const r = await fetch('/api/instructor/reports/status', { method:'POST', headers: authHeaders(true), body: JSON.stringify({ id: x.id, status: 'rejected' }) });
+                    const j = await r.json();
+                    if (r.ok && j.ok) {
+                      try { x.status = 'rejected'; } catch {}
+                      render();
+                    } else { alert(j.error||'Failed'); }
+                  } catch { alert('Network error'); }
+                  reject.disabled = false;
+                });
+              });
+              const textContent = String(x.text||'').trim();
+              if (first.url) { icons.appendChild(dl); } else if (textContent) { icons.appendChild(view); }
+              icons.appendChild(comment);
+              icons.appendChild(accept);
+              icons.appendChild(reject);
+              item.appendChild(lineWho);
+              item.appendChild(meta);
+              item.appendChild(icons);
+              box.appendChild(item);
+            });
+          } else {
+            box.innerHTML = '<div style="text-align:center;padding:12px;border-radius:12px;background:var(--surface-alpha);box-shadow:0 4px 10px rgba(0,0,0,0.08)"><div style="font-size:20px">📄</div><div style="font-weight:700;margin-top:4px">No reports found</div><div style="font-size:12px;opacity:0.7">Try selecting a student or adjusting filters.</div></div>';
+          }
+        }
+        search.addEventListener('input', render);
+        
+        const modal=document.getElementById('photoModal');
+        const close=document.getElementById('photoClose');
+        modal.addEventListener('click',function(e){ if (e.target===modal) modal.style.display='none'; });
+        close.addEventListener('click',function(){ modal.style.display='none'; });
+        const rmodal=document.getElementById('reportModal');
+        const rclose=document.getElementById('reportClose');
+        rmodal.addEventListener('click',function(e){ if (e.target===rmodal) rmodal.style.display='none'; });
+        rclose.addEventListener('click',function(){ rmodal.style.display='none'; });
+        const cmodal=document.getElementById('commentModal');
+        const cclose=document.getElementById('commentClose');
+        const cbox=document.getElementById('commentBox');
+        cbox.addEventListener('click',function(e){ e.stopPropagation(); });
+        cmodal.addEventListener('click',function(e){ if (e.target===cmodal) cmodal.style.display='none'; });
+        cclose.addEventListener('click',function(){ cmodal.style.display='none'; });
+        const nmodal=document.getElementById('noticeModal');
+        const nclose=document.getElementById('noticeClose');
+        nmodal.addEventListener('click',function(e){ if (e.target===nmodal) nmodal.style.display='none'; });
+        nclose.addEventListener('click',function(){ nmodal.style.display='none'; });
+        const xmodal=document.getElementById('confirmModal');
+        xmodal.addEventListener('click',function(e){ if (e.target===xmodal) xmodal.style.display='none'; });
+        render();
+      });
+    </script>
+    <script>
+      (function(){
+        const nav = document.querySelector('.student-nav'); if (!nav) return; nav.classList.add('slideable');
+        let startY=null, lastY=null, moved=0;
+        function start(e){ const t=e.touches?e.touches[0]:e; startY=t.clientY; lastY=startY; moved=0; }
+        function move(e){ const t=e.touches?e.touches[0]:e; lastY=t.clientY; moved=lastY-startY; }
+        function end(){ if (moved>30) { document.body.classList.add('nav-hidden'); } else if (moved<-30) { document.body.classList.remove('nav-hidden'); } else { document.body.classList.toggle('nav-hidden'); } startY=null; lastY=null; moved=0; }
+        nav.addEventListener('touchstart', start, { passive:true });
+        nav.addEventListener('touchmove', move, { passive:true });
+        nav.addEventListener('touchend', end);
+        nav.addEventListener('mousedown', start);
+        nav.addEventListener('mousemove', function(e){ if (startY!==null) move(e); });
+        nav.addEventListener('mouseup', end);
+      })();
+    </script>
+  </body>
+</html>

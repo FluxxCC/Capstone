@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack</title>
+    <meta name="theme-color" content="#111827" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <base href="/">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+    <!-- React 18 UMD builds (primary: jsDelivr, fallback: unpkg) -->
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script>
+      (function(){
+        function navigateToLogin(role){ try{ sessionStorage.setItem('selectedRole', role); }catch{} window.location.href='/login.html'; }
+        var hasReact = !!(window.React && window.ReactDOM);
+        if (hasReact) {
+          function RoleButton(props){ return React.createElement('button', { className:'role-button', onClick: props.onClick }, props.label); }
+          function App(){ const roles=['COORDINATOR','INSTRUCTOR','SUPERVISOR','STUDENT']; return React.createElement('main', { className:'container centered' }, [ React.createElement('h1', { key:'title', className:'title' }, 'OJTonTrack'), React.createElement('div', { key:'buttons', className:'buttons' }, roles.map(function(r){ return React.createElement(RoleButton, { key:r, label:r, onClick:function(){ navigateToLogin(r); } }); })) ]); }
+          var root = ReactDOM.createRoot(document.getElementById('root')); root.render(React.createElement(App));
+          return;
+        }
+        var rootEl = document.getElementById('root');
+        var main = document.createElement('main'); main.className='container centered';
+        var t = document.createElement('h1'); t.className='title'; t.textContent='OJTonTrack';
+        var btns = document.createElement('div'); btns.className='buttons';
+        ['COORDINATOR','INSTRUCTOR','SUPERVISOR','STUDENT'].forEach(function(r){ var b=document.createElement('button'); b.className='role-button'; b.textContent=r; b.addEventListener('click', function(){ navigateToLogin(r); }); btns.appendChild(b); });
+        main.appendChild(t); main.appendChild(btns);
+        rootEl.innerHTML=''; rootEl.appendChild(main);
+      })();
+    </script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function(){
+          navigator.serviceWorker.register('/service-worker.js').then(function(reg){
+            reg.onupdatefound = function(){
+              var sw = reg.installing;
+              if (!sw) return;
+              sw.onstatechange = function(){
+                if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('New version available');
+                }
+              };
+            };
+          }).catch(function(){});
+        });
+      }
+    </script>
+  </body>
+  <script>
+    (function(){
+      var deferred = null;
+      var ua = String(navigator.userAgent||'');
+      var isiOS = /iPad|iPhone|iPod/.test(ua);
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      function showBtn(){
+        if (document.getElementById('install-btn')) return;
+        var btn = document.createElement('button');
+        btn.id='install-btn';
+        btn.textContent = isiOS ? 'Add to Home Screen' : 'Install App';
+        btn.style.position='fixed'; btn.style.right='16px'; btn.style.bottom='16px'; btn.style.zIndex='9999';
+        btn.style.padding='10px 14px'; btn.style.borderRadius='8px'; btn.style.background='#111827'; btn.style.color='#fff'; btn.style.border='none'; btn.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)';
+        btn.onclick=function(){
+          if (deferred) { deferred.prompt(); deferred.userChoice.finally(function(){ deferred=null; btn.remove(); }); }
+          else if (isiOS) { alert('Open the Share menu and tap "Add to Home Screen"'); }
+        };
+        document.body.appendChild(btn);
+      }
+      window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred = e; if (!isStandalone) showBtn(); });
+      if (isiOS && !isStandalone) { setTimeout(showBtn, 1500); }
+    })();
+  </script>
+  </html>

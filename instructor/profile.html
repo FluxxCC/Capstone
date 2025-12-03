@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Instructor — Profile</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container centered">
+      <div class="dashboard-main center-page">
+        <h2 class="welcome">Instructor Profile</h2>
+        <div class="attendance-card" id="profileBox">
+          <div style="display:grid;gap:8px;text-align:left">
+            <div id="pName" class="stat-label">Name: </div>
+            <div id="pCourse" class="stat-label">Course: </div>
+            <div id="pSection" class="stat-label">Section: </div>
+          </div>
+          <div class="buttons" style="margin-top:12px">
+            <button id="logoutBtn" class="role-button" style="width:100%">Logout</button>
+          </div>
+        </div>
+      </div>
+    </main>
+    <nav class="student-nav">
+      <div class="student-nav-inner" style="grid-template-columns: repeat(4, 1fr)">
+        <a href="/instructor/dashboard.html" aria-label="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7"/><path d="M5 11v9h14v-9"/></svg>
+        </a>
+        <a href="/instructor/students.html" aria-label="Logs">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </a>
+        <a href="/instructor/reports.html" aria-label="Reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 012-2h10"/><path d="M20 7v12a2 2 0 01-2 2H6"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h6"/></svg>
+        </a>
+        <a href="/instructor/profile.html" class="active" aria-label="Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+    <script>
+      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      document.addEventListener('DOMContentLoaded', async function(){
+        const elName = document.getElementById('pName');
+        const elCourse = document.getElementById('pCourse');
+        const elSection = document.getElementById('pSection');
+        elName.textContent = 'Name: Loading…';
+        elCourse.textContent = 'Course: Loading…';
+        elSection.textContent = 'Section: Loading…';
+        try {
+          const meR = await fetch('/api/me', { headers: authHeaders() });
+          const meJ = await meR.json();
+          const data = (meR.ok && meJ.ok) ? (meJ.data || {}) : {};
+          const name = String(data.name || '').trim() || `${data.firstName||''} ${data.lastName||''}`.trim() || (data.idNumber||'');
+          const course = String(data.course || '').trim() || (data.courseCode || '');
+          const section = String(data.section || '').trim();
+          elName.textContent = `Name: ${name || '(Unknown)'}`;
+          // keep course/section in loading state until aggregated assignments load
+          const id = String(data.idNumber || data.id_number || '').trim();
+          if (id) {
+            try {
+              const r = await fetch('/api/instructor/me/assignments', { headers: authHeaders() });
+              const j = await r.json().catch(()=>({ ok:false }));
+              if (r.ok && j && j.ok) {
+                const coursesArr = Array.isArray(j.data?.courses) ? j.data.courses.map(String).filter(Boolean) : [];
+                const sectionsArr = Array.isArray(j.data?.sections) ? j.data.sections.map(String).filter(Boolean) : [];
+                if (coursesArr.length) elCourse.textContent = `Course: ${coursesArr.join(', ')}`;
+                if (sectionsArr.length) elSection.textContent = `Section: ${sectionsArr.join(', ')}`;
+              }
+            } catch {}
+            if (elCourse.textContent.endsWith('Loading…')) elCourse.textContent = `Course: ${(course || '(Unknown)')}`;
+            if (elSection.textContent.endsWith('Loading…')) elSection.textContent = `Section: ${(section || '(Unknown)')}`;
+          }
+        } catch {}
+        document.getElementById('logoutBtn').addEventListener('click', async function(){
+          try { await fetch('/api/logout', { method: 'POST' }); } catch {}
+          try { sessionStorage.removeItem('selectedRole'); sessionStorage.removeItem('userAuth'); } catch {}
+          try { sessionStorage.removeItem('userToken'); } catch {}
+          window.location.href = '/';
+        });
+      });
+    </script>
+    <script>
+      (function(){
+        const nav = document.querySelector('.student-nav'); if (!nav) return; nav.classList.add('slideable');
+        let startY=null, lastY=null, moved=0;
+        function start(e){ const t=e.touches?e.touches[0]:e; startY=t.clientY; lastY=startY; moved=0; }
+        function move(e){ const t=e.touches?e.touches[0]:e; lastY=t.clientY; moved=lastY-startY; }
+        function end(){ if (moved>30) { document.body.classList.add('nav-hidden'); } else if (moved<-30) { document.body.classList.remove('nav-hidden'); } else { document.body.classList.toggle('nav-hidden'); } startY=null; lastY=null; moved=0; }
+        nav.addEventListener('touchstart', start, { passive:true });
+        nav.addEventListener('touchmove', move, { passive:true });
+        nav.addEventListener('touchend', end);
+        nav.addEventListener('mousedown', start);
+        nav.addEventListener('mousemove', function(e){ if (startY!==null) move(e); });
+        nav.addEventListener('mouseup', end);
+      })();
+    </script>
+  </body>
+</html>

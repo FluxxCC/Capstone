@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OJTonTrack — DTR</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container centered">
+      <div class="dashboard-main center-page">
+        
+        <div class="stat" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:12px;background:var(--surface-alpha);box-shadow:0 6px 14px rgba(0,0,0,0.08)">
+          <span class="stat-label" id="dateText" style="font-weight:800"></span>
+          <span class="stat-value" id="clockText" style="font-size:1.4rem;font-weight:800"></span>
+        </div>
+        <div class="list-card" style="margin-top:12px;margin-bottom:12px; min-height: 36vh; display:flex; flex-direction:column; align-items:center; box-shadow:0 6px 14px rgba(0,0,0,0.08); border-radius:12px; padding:10px 12px; background:var(--surface-alpha)">
+          <span class="stat-label" style="text-align:center; width:100%; margin-bottom:8px; font-weight:800">Photo Attendance</span>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px; width:100%; flex:1; align-self:stretch">
+            <div id="photoBox" style="position:relative;display:none;width:100%;max-width:100%;justify-content:center">
+              <canvas id="canvas" style="display:block;width:clamp(240px,80vw,420px);height:auto;max-height:32vh;border-radius:12px;margin:0 auto"></canvas>
+            </div>
+            <button id="photoClearBtn" class="role-button" aria-label="Remove Photo" style="display:none;width:auto;padding:6px 10px;margin:0 auto">Remove Photo</button>
+            <div id="photoTip" style="font-size:0.85rem;color:#4b5563;display:none;text-align:center">Photo captured. You can now log.</div>
+            <div id="camMsg" style="font-size:0.85rem;color:#dc2626;display:none;text-align:center"></div>
+            <input id="fileInput" type="file" accept="image/*" capture="user" style="display:none" />
+            <button id="camBtn" class="role-button" aria-label="Open Camera" style="width:72px;height:72px;padding:0;border-radius:9999px;display:flex;align-items:center;justify-content:center;color:#111827;margin-top:auto;margin-bottom:6px;box-shadow:0 8px 16px rgba(0,0,0,0.12);border:2px solid #d1d5db;background:#fff">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
+                <rect x="3" y="7" width="18" height="13" rx="2"/>
+                <path d="M9 7l2-2h2l2 2"/>
+                <circle cx="12" cy="13.5" r="4"/>
+              </svg>
+            </button>
+            <div id="camLabel" style="font-weight:800;font-size:1.15rem;opacity:0.95">📷 Capture DTR Photo</div>
+          </div>
+        </div>
+        <div class="buttons" style="display:grid;grid-template-columns:1fr;gap:10px;justify-items:center">
+          <button id="logBtn" class="role-button primary" disabled style="width:100%;max-width:480px">Time in</button>
+          <button id="logsBtn" class="role-button" style="width:100%;max-width:480px;background:#fff;border:1px solid #d1d5db;color:#111">Attendance Logs</button>
+        </div>
+        <div id="feedbackBox" style="display:none;margin-top:10px;padding:12px;border-radius:12px;background:var(--surface-alpha);box-shadow:0 4px 10px rgba(0,0,0,0.08);text-align:center"></div>
+        
+      </div>
+    </main>
+    <div id="photoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:#fff;padding:10px;border-radius:10px;max-width:90%;max-height:85vh;display:flex;flex-direction:column;align-items:center">
+        <img id="photoModalImg" src="" alt="photo" style="max-width:100%;max-height:75vh;border-radius:8px" />
+        <button id="photoClose" class="role-button" style="margin-top:8px;padding:6px 12px">Close</button>
+      </div>
+    </div>
+    
+    <div id="camModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:#fff;padding:12px;border-radius:12px;width:clamp(320px,80vw,720px);max-height:85vh;display:flex;flex-direction:column;gap:10px;align-items:center">
+        <video id="video" playsinline style="width:100%;max-height:60vh;border-radius:8px;object-fit:cover"></video>
+        <div style="display:flex;gap:8px;justify-content:flex-end;width:100%">
+          <button id="camModalClose" class="role-button">Close Camera</button>
+          <button id="camCaptureBtn" class="role-button primary">Capture</button>
+        </div>
+      </div>
+    </div>
+    <nav class="student-nav">
+      <div class="student-nav-inner">
+        <a href="/student/dashboard.html" aria-label="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7"/><path d="M5 11v9h14v-9"/></svg>
+        </a>
+        <a href="/student/DTR.html" class="active" aria-label="Attendance">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        </a>
+        <a href="/student/reports.html" aria-label="Reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 012-2h10"/><path d="M20 7v12a2 2 0 01-2 2H6"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h6"/></svg>
+        </a>
+        <a href="/student/profile.html" aria-label="Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </a>
+      </div>
+    </nav>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/config.js"></script>
+    <script>
+      let nextAction = 'in';
+      let streaming = false;
+      let photoData = '';
+      let logging = false;
+      const vid = document.getElementById('video');
+      const cvs = document.getElementById('canvas');
+      const photoBox = document.getElementById('photoBox');
+      const camBtn = document.getElementById('camBtn');
+      const photoClearBtn = document.getElementById('photoClearBtn');
+      const logsBtn = document.getElementById('logsBtn');
+      const camModal = document.getElementById('camModal');
+      const camCaptureBtn = document.getElementById('camCaptureBtn');
+      const camModalClose = document.getElementById('camModalClose');
+      const camFlipBtn = document.getElementById('camFlipBtn');
+      const camThumb = document.getElementById('camThumb');
+      const tip = document.getElementById('photoTip');
+      const camMsg = document.getElementById('camMsg');
+      const fileInput = document.getElementById('fileInput');
+      const logBtn = document.getElementById('logBtn');
+      
+      let facing = 'user';
+      function openNativeCamera(){ try { fileInput.setAttribute('capture', facing==='environment' ? 'environment' : 'user'); fileInput.click(); } catch {} }
+      function isMobile(){ try { return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'') || window.matchMedia('(pointer: coarse)').matches; } catch { return false; } }
+      async function broadcastAttendance(){
+        try {
+          const me = await fetch('/api/me', { headers: authHeaders(), cache: 'no-store' });
+          const mj = await me.json();
+          const idNumber = mj?.data?.id_number || mj?.data?.idNumber || '';
+          const course = mj?.data?.course || '';
+          const sb = window.supabase?.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+          if (sb && idNumber) {
+            const ch = sb.channel('att-global');
+            await ch.subscribe();
+            await ch.send({ type: 'broadcast', event: 'attendance', payload: { idNumber, course } });
+          }
+        } catch {}
+      }
+      function fmtDate(d) { return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); }
+      function fmtTime(d) { return d.toLocaleTimeString(); }
+      function setClock() {
+        const now = new Date();
+        document.getElementById('dateText').textContent = fmtDate(now);
+        document.getElementById('clockText').textContent = fmtTime(now);
+      }
+      setClock();
+      setInterval(setClock, 1000);
+      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      async function syncNextAction(){
+        try {
+          const r = await fetch('/api/attendance/recent', { headers: authHeaders() });
+          const j = await r.json().catch(()=>({}));
+          const rows = r.ok && j.ok && Array.isArray(j.data) ? j.data : [];
+          const last = rows[0] || null;
+          if (last && String(last.type||'') === 'in') { nextAction = 'out'; } else { nextAction = 'in'; }
+          logBtn.textContent = nextAction === 'in' ? 'Time in' : 'Time out';
+        } catch { logBtn.textContent = nextAction === 'in' ? 'Time in' : 'Time out'; }
+      }
+      async function initUser() {
+        try {
+          const r = await fetch('/api/me', { headers: authHeaders() });
+          if (!r.ok) { window.location.replace('/index.html'); return; }
+          const j = await r.json(); if (j.ok && j.data && j.data.name) { const el=document.getElementById('userName'); if (el) el.textContent = j.data.name; }
+        } catch {}
+      }
+      
+      async function startCamera() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
+          vid.srcObject = stream; await vid.play(); streaming = true; camMsg.style.display = 'none';
+          if (camModal) camModal.style.display = 'flex';
+        } catch (e) {
+          try {
+            const proto = String(location.protocol || '');
+            if (proto === 'file:') {
+              camMsg.textContent = 'Camera needs a secure origin. Please open via localhost or use Upload Photo.';
+              camMsg.style.display = 'block';
+            } else {
+              const msg = String(e && e.message || 'Camera not available');
+              camMsg.textContent = msg + '. You can use Upload Photo instead.';
+              camMsg.style.display = 'block';
+            }
+          } catch {}
+          try { if (isMobile()) fileInput.click(); } catch {}
+        }
+      }
+      function stopCamera() {
+        const s = vid.srcObject; if (s && s.getTracks) s.getTracks().forEach(t => t.stop()); vid.srcObject = null; streaming = false;
+        if (camModal) camModal.style.display = 'none';
+      }
+      function capture() {
+        const w = vid.videoWidth || 480; const h = vid.videoHeight || 360;
+        cvs.width = w; cvs.height = h; const ctx = cvs.getContext('2d'); ctx.drawImage(vid, 0, 0, w, h);
+        photoData = cvs.toDataURL('image/jpeg', 0.85); photoBox.style.display = 'block'; tip.style.display = 'block'; if (photoClearBtn) photoClearBtn.style.display = 'inline-block'; logBtn.disabled = false; try { camThumb.style.backgroundImage = 'url("'+photoData+'")'; camThumb.style.backgroundSize = 'cover'; camThumb.style.backgroundPosition = 'center'; } catch {} ; stopCamera();
+      }
+      camBtn.addEventListener('click', function() { if (isMobile()) openNativeCamera(); else startCamera(); });
+      if (logsBtn) logsBtn.addEventListener('click', function(){ window.location.href = '/student/attendance-logs.html'; });
+      if (camCaptureBtn) camCaptureBtn.addEventListener('click', function(){ if (streaming) capture(); });
+      if (camModalClose) camModalClose.addEventListener('click', function(){ stopCamera(); });
+      if (camModal) camModal.addEventListener('click', function(e){ if (e.target === camModal) stopCamera(); });
+      if (camFlipBtn) camFlipBtn.addEventListener('click', function(){ facing = facing === 'user' ? 'environment' : 'user'; if (streaming) { try { stopCamera(); startCamera(); } catch {} } else { try { fileInput.setAttribute('capture', facing==='environment' ? 'environment' : 'user'); } catch {} } });
+      fileInput.addEventListener('change', function(){
+        const f = this.files && this.files[0] ? this.files[0] : null;
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = function(ev){
+          const dataUrl = String(ev.target && ev.target.result || '');
+          if (!/^data:image\/(png|jpeg);base64,/.test(dataUrl)) { camMsg.textContent = 'Invalid image selected'; camMsg.style.display = 'block'; return; }
+          const img = new Image();
+          img.onload = function(){
+            cvs.width = img.width; cvs.height = img.height;
+            const ctx = cvs.getContext('2d');
+            ctx.drawImage(img, 0, 0, img.width, img.height);
+            photoData = cvs.toDataURL('image/jpeg', 0.85);
+            photoBox.style.display = 'block'; tip.style.display = 'block'; if (photoClearBtn) photoClearBtn.style.display = 'inline-block'; logBtn.disabled = false;
+            camMsg.style.display = 'none';
+          };
+          img.src = dataUrl;
+        };
+        reader.readAsDataURL(f);
+      });
+      if (photoClearBtn) photoClearBtn.addEventListener('click', function(){ photoData=''; if (photoBox) photoBox.style.display='none'; tip.style.display='none'; photoClearBtn.style.display='none'; logBtn.disabled = true; });
+      logBtn.addEventListener('click', async function() {
+        if (logging) return;
+        if (!photoData) { alert('Capture a photo first'); return; }
+        logging = true; logBtn.disabled = true;
+        try {
+          const r = await fetch('/api/attendance', { method: 'POST', headers: authHeaders(true), body: JSON.stringify({ type: nextAction, photo: photoData }) });
+          const j = await r.json();
+          if (r.ok && j.ok) {
+            const now = new Date();
+            const item = document.createElement('div'); item.className='recent-item';
+            const title = document.createElement('div'); title.className='recent-title'; title.textContent = nextAction === 'in' ? '🕒 Time In' : '🕒 Time Out';
+            const sub = document.createElement('div'); sub.className='recent-sub'; sub.textContent = `${fmtDate(now)} • ${fmtTime(now)}`;
+            const pill = document.createElement('span'); pill.className = 'status-pill status-pending'; pill.textContent = 'Pending'; sub.appendChild(pill);
+            const actions = document.createElement('div'); actions.className='recent-actions';
+          if (j.photoUrl) { const a = document.createElement('a'); a.href = '#'; a.textContent = 'View Photo'; a.addEventListener('click', function(e){ e.preventDefault(); const m=document.getElementById('photoModal'); const img=document.getElementById('photoModalImg'); img.src=j.photoUrl; m.style.display='flex'; }); actions.appendChild(a); }
+          item.appendChild(title); item.appendChild(sub); if (actions.childNodes.length) item.appendChild(actions);
+          photoData = ''; if (photoBox) photoBox.style.display = 'none'; tip.style.display = 'none'; if (photoClearBtn) photoClearBtn.style.display = 'none';
+            nextAction = nextAction === 'in' ? 'out' : 'in'; logBtn.textContent = nextAction === 'in' ? 'Time in' : 'Time out';
+            logging = false;
+            try { broadcastAttendance(); } catch {}
+            try {
+              const fb = document.getElementById('feedbackBox');
+              if (fb) {
+                if (nextAction === 'out') {
+                  fb.innerHTML = '✔ You clocked in at ' + fmtTime(now) + '<div style="font-size:12px;opacity:0.8;margin-top:4px">Elapsed time: <span id="elapsedText">00:00:00</span> ⏳</div>';
+                  fb.style.display = 'block';
+                  const startMs = now.getTime();
+                  if (window.__dtrTimer) clearInterval(window.__dtrTimer);
+                  window.__dtrTimer = setInterval(function(){ const ms = Math.max(0, Date.now() - startMs); const h=Math.floor(ms/3600000); const m=Math.floor((ms%3600000)/60000); const s=Math.floor((ms%60000)/1000); const pad=n=>String(n).padStart(2,'0'); const t = pad(h)+':'+pad(m)+':'+pad(s); const el=document.getElementById('elapsedText'); if (el) el.textContent=t; }, 1000);
+                } else {
+                  fb.innerHTML = '✔ You clocked out at ' + fmtTime(now);
+                  fb.style.display = 'block';
+                  if (window.__dtrTimer) { clearInterval(window.__dtrTimer); window.__dtrTimer=null; }
+                }
+              }
+            } catch {}
+          } else { alert(j.error || 'Failed to log'); logging = false; logBtn.disabled = false; }
+        } catch { alert('Network error'); logging = false; logBtn.disabled = false; }
+      });
+      initUser();
+      syncNextAction();
+      (function(){ const m=document.getElementById('photoModal'); const c=document.getElementById('photoClose'); if (m && c) { m.addEventListener('click', function(e){ if (e.target===m) m.style.display='none'; }); c.addEventListener('click', function(){ m.style.display='none'; }); } })();
+      (function(){
+        const nav = document.querySelector('.student-nav'); if (!nav) return; nav.classList.add('slideable');
+        let startY=null, lastY=null, moved=0;
+        function start(e){ const t=e.touches?e.touches[0]:e; startY=t.clientY; lastY=startY; moved=0; }
+        function move(e){ const t=e.touches?e.touches[0]:e; lastY=t.clientY; moved=lastY-startY; }
+        function end(){ if (moved>30) { document.body.classList.add('nav-hidden'); } else if (moved<-30) { document.body.classList.remove('nav-hidden'); } else { document.body.classList.toggle('nav-hidden'); } startY=null; lastY=null; moved=0; }
+        nav.addEventListener('touchstart', start, { passive:true });
+        nav.addEventListener('touchmove', move, { passive:true });
+        nav.addEventListener('touchend', end);
+        nav.addEventListener('mousedown', start);
+        nav.addEventListener('mousemove', function(e){ if (startY!==null) move(e); });
+        nav.addEventListener('mouseup', end);
+      })();
+    </script>
+  </body>
+</html>
