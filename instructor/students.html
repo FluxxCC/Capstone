@@ -130,7 +130,9 @@
 
         function render(){
           const pendingRows = applyFilters(all, 'awaiting_supervisor').sort((a,b)=>Number(b.ts||0)-Number(a.ts||0)).slice(0,200);
-          const confirmedRows = applyFilters(all, 'confirmed').sort((a,b)=>Number(b.ts||0)-Number(a.ts||0)).slice(0,200);
+          const now = Date.now();
+          const cutoff = now - (24 * 60 * 60 * 1000);
+          const confirmedRows = applyFilters(all, 'confirmed').filter(x=>Number(x.ts||0) >= cutoff).sort((a,b)=>Number(b.ts||0)-Number(a.ts||0)).slice(0,200);
           try {
             const ph = document.getElementById('pendingHeader'); if (ph) ph.textContent = 'Pending Logs (' + pendingRows.length + ')';
             const ch = document.getElementById('confirmedHeader'); if (ch) ch.textContent = 'Confirmed Logs (' + confirmedRows.length + ')';

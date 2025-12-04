@@ -20,6 +20,25 @@ app.use(session({
   saveUninitialized: false,
 }));
 
+let webpush = null;
+let VAPID = { publicKey: null, privateKey: null };
+try {
+  webpush = require('web-push');
+  const pk = String(process.env.VAPID_PUBLIC_KEY || '').trim();
+  const sk = String(process.env.VAPID_PRIVATE_KEY || '').trim();
+  if (pk && sk) {
+    VAPID.publicKey = pk;
+    VAPID.privateKey = sk;
+  } else {
+    const gen = webpush.generateVAPIDKeys();
+    VAPID.publicKey = gen.publicKey;
+    VAPID.privateKey = gen.privateKey;
+    console.warn('[push] Using ephemeral VAPID keys; set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY for production');
+  }
+  webpush.setVapidDetails('mailto:admin@example.com', VAPID.publicKey, VAPID.privateKey);
+} catch {}
+const pushSubsBySupervisor = new Map();
+
 app.use((req, res, next) => {
   try {
     const origin = String(req.headers.origin || '').trim();
@@ -1143,6 +1162,58 @@ app.get('/api/me', requireAuth, async (req, res) => {
   }
 });
 
+// Push notification endpoints
+app.get('/api/push/public-key', requireAuth, async (req, res) => {
+  if (!webpush || !VAPID.publicKey) return res.status(503).json({ ok: false, error: 'Push not available' });
+  return res.json({ ok: true, key: VAPID.publicKey });
+});
+app.post('/api/push/subscribe', requireAuth, async (req, res) => {
+  try {
+    if (!webpush) return res.status(503).json({ ok: false, error: 'Push not available' });
+    const u = req.user;
+    if (u.role !== 'supervisor') return res.status(403).json({ ok: false, error: 'Supervisor role required' });
+    const sub = req.body && req.body.subscription ? req.body.subscription : req.body;
+    if (!sub || !sub.endpoint) return res.status(400).json({ ok: false, error: 'Invalid subscription' });
+    const key = String(u.idNumber || '').trim();
+    if (!key) return res.status(400).json({ ok: false, error: 'idNumber missing' });
+    const arr = pushSubsBySupervisor.get(key) || [];
+    const exists = arr.find(x => String(x.endpoint||'') === String(sub.endpoint||''));
+    if (!exists) arr.push(sub);
+    pushSubsBySupervisor.set(key, arr);
+    return res.json({ ok: true });
+  } catch { return res.status(500).json({ ok: false, error: 'Server error' }); }
+});
+
+async function notifySupervisorsOfAttendance(studentIdNumber, payload){
+  try {
+    if (!webpush) return;
+    let course = null, section = null, supervisorId = null;
+    if (supabase) {
+      const { data: rows } = await supabase.from('users').select('course,section,supervisorid').eq('idnumber', studentIdNumber).limit(1);
+      const stu = Array.isArray(rows) && rows[0] ? rows[0] : null;
+      course = stu ? (stu.course || null) : null;
+      section = stu ? (stu.section || null) : null;
+      supervisorId = stu ? (stu.supervisorid || null) : null;
+    }
+    let targets = [];
+    if (supervisorId) targets.push(String(supervisorId));
+    if (!targets.length && supabase && course) {
+      let q = supabase.from('users').select('idnumber').eq('role','supervisor').eq('course', String(course));
+      if (section) q = q.eq('section', String(section));
+      const { data: sups } = await q.limit(10);
+      const ids = Array.isArray(sups) ? sups.map(s => String(s.idnumber||'').trim()).filter(Boolean) : [];
+      targets.push(...ids);
+    }
+    targets = Array.from(new Set(targets.filter(Boolean)));
+    for (const tid of targets) {
+      const subs = pushSubsBySupervisor.get(String(tid)) || [];
+      for (const s of subs) {
+        try { await webpush.sendNotification(s, JSON.stringify(payload)); } catch (e) { /* ignore */ }
+      }
+    }
+  } catch {}
+}
+
 app.post('/api/logout', async (req, res) => {
   try {
     req.session.destroy(() => {
@@ -1184,6 +1255,13 @@ app.post('/api/attendance', requireAuth, async (req, res) => {
         photoUrl = uploadResult.secure_url || uploadResult.url || null;
       }
       await supabase.from('attendance').insert([{ idnumber: u.idNumber, role: u.role, course: u.courseCode || null, type, ts, photourl: photoUrl, storage: photoUrl ? 'cloudinary' : 'none', status: 'awaiting_supervisor', createdat: new Date().toISOString() }]);
+      try {
+        let name = u.idNumber;
+        const { data: meRow } = await supabase.from('users').select('name').eq('idnumber', u.idNumber).limit(1);
+        if (Array.isArray(meRow) && meRow[0] && meRow[0].name) name = meRow[0].name;
+        const payload = { title: type==='in' ? 'Attendance — Time In' : 'Attendance — Time Out', body: `${name} (${u.idNumber}) ${type==='in'?'timed in':'timed out'}`, url: '/supervisor/attendance.html' };
+        notifySupervisorsOfAttendance(u.idNumber, payload);
+      } catch {}
       return res.status(201).json({ ok: true, photoUrl });
     }
     return res.status(500).json({ ok: false, error: 'Supabase not configured' });

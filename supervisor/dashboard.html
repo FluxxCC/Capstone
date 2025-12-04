@@ -164,6 +164,23 @@
             ch.on('broadcast', { event:'attendance' }, reloadAll);
             ch.subscribe();
           }
+          // Push subscription for notifications
+          try {
+            if ('Notification' in window && 'serviceWorker' in navigator) {
+              const perm = await Notification.requestPermission();
+              if (perm === 'granted') {
+                const reg = await navigator.serviceWorker.ready;
+                const resp = await fetch('/api/push/public-key', { headers: authHeaders(), cache: 'no-store' });
+                const jpk = await resp.json().catch(()=>({}));
+                const key = (resp.ok && jpk.ok && jpk.key) ? jpk.key : null;
+                function urlBase64ToUint8Array(base64String){ const padding='='.repeat((4-base64String.length%4)%4); const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/'); const rawData=window.atob(base64); const outputArray=new Uint8Array(rawData.length); for(let i=0;i<rawData.length;++i){ outputArray[i]=rawData.charCodeAt(i);} return outputArray; }
+                if (key) {
+                  const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key) });
+                  await fetch('/api/push/subscribe', { method:'POST', headers: authHeaders(true), body: JSON.stringify({ subscription: sub }) });
+                }
+              }
+            }
+          } catch {}
         } catch {}
         const modal = document.getElementById('photoModal');
         const closeBtn = document.getElementById('photoClose');

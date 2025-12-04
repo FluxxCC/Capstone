@@ -122,7 +122,17 @@
           
         } catch { box.innerHTML = '<div>No activity yet</div>'; return; }
         function statusText(s){ if (String(s||'')==='under_review') return 'Under Review'; if (String(s||'')==='accepted') return 'Accepted'; if (String(s||'')==='rejected') return 'Rejected'; return 'Draft'; }
-        function applyFilters(rows){ const q=String(search.value||'').toLowerCase(); return rows.filter(x=>{ const name=String(x.name||x.idNumber||'').toLowerCase(); const title=String(x.title||'').toLowerCase(); if (q && !(name.includes(q)||title.includes(q))) return false; return true; }); }
+        function applyFilters(rows){
+          const q = String(search.value||'').toLowerCase();
+          return rows.filter(x => {
+            const name = String(x.name||x.idNumber||'').toLowerCase();
+            const title = String(x.title||'').toLowerCase();
+            if (q && !(name.includes(q) || title.includes(q))) return false;
+            const st = String(x.status||'').toLowerCase();
+            if (st === 'accepted' || st === 'rejected') return false; // hide processed items
+            return true;
+          });
+        }
         function render(){
           const rows = applyFilters(all).sort((a,b)=>Number(b.ts||0)-Number(a.ts||0)).slice(0,200);
           try { if (header) header.textContent = 'Reports (' + rows.length + ')'; } catch {}

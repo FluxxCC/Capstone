@@ -65,3 +65,26 @@ self.addEventListener('fetch', event => {
     return;
   }
 });
+
+// Push notifications
+self.addEventListener('push', event => {
+  try {
+    const data = event.data ? event.data.json() : {};
+    const title = String(data.title || 'Notification');
+    const body = String(data.body || '');
+    const url = String(data.url || '/');
+    const options = { body, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', data: { url } };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch {}
+});
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = (event.notification && event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const page = list.find(w => w.url && w.url.includes(url));
+      if (page) return page.focus();
+      return clients.openWindow(url);
+    })
+  );
+});
