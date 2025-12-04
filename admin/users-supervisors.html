@@ -34,7 +34,7 @@
         const [search, setSearch] = React.useState('');
         const [showAdd, setShowAdd] = React.useState(false);
 
-        function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+        function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
         async function ensureAdmin() {
           try {
             const r = await fetch('/api/me', { headers: authHeaders() });

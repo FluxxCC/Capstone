@@ -36,7 +36,7 @@
         const [editing, setEditing] = React.useState(null);
         const [toDelete, setToDelete] = React.useState(null);
 
-        function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+        function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
         async function ensureAdmin() {
           try {
             const r = await fetch('/api/me', { headers: authHeaders() });
@@ -181,7 +181,7 @@
           const idNumber = props.idNumber;
           const name = 'courses';
           const [values, setValues] = React.useState([]);
-          function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+          function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
           React.useEffect(()=>{ (async()=>{ try { const r = await fetch(`/api/coordinator/${encodeURIComponent(idNumber)}/courses`, { headers: authHeaders() }); const j = await r.json(); const arr = (r.ok && j.ok && Array.isArray(j.data)) ? j.data : []; setValues(arr); } catch {} })(); }, [idNumber]);
           return React.createElement(CustomSelect, { name, multiple: true, placeholder: 'Assign Course(s)', options: ['BSIT','BSIS','BSCS'], defaultValue: values, required: true });
         }

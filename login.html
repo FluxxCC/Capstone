@@ -42,9 +42,13 @@
           var form = document.createElement('form'); form.className='form';
           var inpId = document.createElement('input'); inpId.className='input'; inpId.type='text'; inpId.name='id'; inpId.placeholder='ID number'; inpId.required=true; inpId.autocomplete='username';
           var inpPw = document.createElement('input'); inpPw.className='input'; inpPw.type='password'; inpPw.name='password'; inpPw.placeholder='Password'; inpPw.required=true; inpPw.autocomplete='current-password';
+          var rememberWrap = document.createElement('label'); rememberWrap.style.display='flex'; rememberWrap.style.alignItems='center'; rememberWrap.style.gap='8px'; rememberWrap.style.margin='6px 0';
+          var remember = document.createElement('input'); remember.type='checkbox'; remember.name='remember'; remember.id='remember';
+          var rememberText = document.createElement('span'); rememberText.textContent='Keep me signed in';
+          rememberWrap.appendChild(remember); rememberWrap.appendChild(rememberText);
           var submit = document.createElement('button'); submit.className='role-button'; submit.type='submit'; submit.textContent='Login';
           var back = document.createElement('button'); back.className='role-button'; back.type='button'; back.textContent='Back'; back.addEventListener('click', function(){ goBack(); });
-          form.appendChild(inpId); form.appendChild(inpPw); form.appendChild(submit); form.appendChild(back);
+          form.appendChild(inpId); form.appendChild(inpPw); form.appendChild(rememberWrap); form.appendChild(submit); form.appendChild(back);
           form.addEventListener('submit', async function(e){ e.preventDefault(); try { var idNumber=(inpId.value||'').trim(); var password=(inpPw.value||'').trim(); var resp=await fetch('/login', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ idNumber, password }) }); var data=await resp.json().catch(function(){ return {}; }); if (resp.ok && data && data.ok) { try { sessionStorage.setItem('userAuth','true'); if(data.token) sessionStorage.setItem('userToken', data.token); if(data.role) sessionStorage.setItem('role', data.role); } catch {} try { var tkn=data.token||sessionStorage.getItem('userToken'); await fetch('/api/auth/link', { method:'POST', headers:{ 'Content-Type':'application/json', ...(tkn?{ Authorization:'Bearer '+tkn }:{}) }, body: JSON.stringify({ password }) }); } catch {} try { var sb=window.supabase?.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY); if (sb) { var email=idNumber+'@ojt.local'; await sb.auth.signInWithPassword({ email, password }); } } catch {} var path=data.redirect||'/'; if (typeof path==='string' && path.length && path[0]!=='/') path='/'+path; window.location.href=path; } else { alert(data && data.error ? data.error : 'Invalid credentials'); } } catch(err){ alert('Network error'); } });
           main.appendChild(t); main.appendChild(form); root.innerHTML=''; root.appendChild(main); return; }
       })();
@@ -67,6 +71,7 @@
                   const form = e.currentTarget;
                   const idNumber = (form.id?.value || form.id?.value || '').trim();
                   const password = (form.password?.value || '').trim();
+                  const remember = !!form.remember?.checked;
                   try {
                     const resp = await fetch('/login', {
                       method: 'POST',
@@ -76,12 +81,21 @@
                     const data = await resp.json();
                     if (resp.ok && data.ok) {
                       try {
-                        sessionStorage.setItem('userAuth', 'true');
-                        if (data.token) sessionStorage.setItem('userToken', data.token);
-                        if (data.role) sessionStorage.setItem('role', data.role);
+                        if (remember) {
+                          localStorage.setItem('userAuth','true');
+                          if (data.token) localStorage.setItem('userToken', data.token);
+                          if (data.role) localStorage.setItem('role', data.role);
+                          try { sessionStorage.removeItem('userAuth'); sessionStorage.removeItem('userToken'); sessionStorage.removeItem('role'); } catch {}
+                        } else {
+                          sessionStorage.setItem('userAuth', 'true');
+                          if (data.token) sessionStorage.setItem('userToken', data.token);
+                          if (data.role) sessionStorage.setItem('role', data.role);
+                          try { localStorage.removeItem('userAuth'); localStorage.removeItem('userToken'); localStorage.removeItem('role'); } catch {}
+                        }
+                        localStorage.setItem('rememberLogin', remember ? '1' : '0');
                       } catch (e) {}
                       try {
-                        const t = data.token || sessionStorage.getItem('userToken');
+                        const t = data.token || localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
                         await fetch('/api/auth/link', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: 'Bearer '+t } : {}) }, body: JSON.stringify({ password }) });
                       } catch {}
                       try {
@@ -201,6 +215,10 @@
                     )
                   ]
                 ),
+                React.createElement('label', { key: 'rememberWrap', style: { display:'flex', alignItems:'center', gap:'8px', margin:'6px 0' } }, [
+                  React.createElement('input', { key:'remember', type:'checkbox', name:'remember', id:'remember' }),
+                  React.createElement('span', { key:'rememberText' }, 'Keep me signed in')
+                ]),
                 React.createElement('button', { key: 'submit', className: 'role-button', type: 'submit' }, 'Login'),
                 React.createElement('button', { key: 'back', className: 'role-button', type: 'button', onClick: goBack }, 'Back'),
               ]

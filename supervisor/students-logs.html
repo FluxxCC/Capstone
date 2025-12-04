@@ -50,7 +50,7 @@
       </div>
     </div>
     <script>
-      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       async function apiFetch(p, opts){
         const o = { credentials: 'include', mode: 'cors', redirect: 'follow', cache: 'no-store', ...(opts || {}) };
         try { return await fetch(p, o); } catch (e) {

@@ -88,7 +88,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/config.js"></script>
     <script>
-      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       function fmtWhen(ts){ const d = new Date(Number(ts||Date.now())); const date = d.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' }); const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' }); return date + ' • ' + time; }
       function viewFile(url, type){ if (/^image\//.test(String(type||''))) { const m=document.getElementById('photoModal'); const img=document.getElementById('photoModalImg'); img.src=url; m.style.display='flex'; } else { window.open(url, '_blank', 'noreferrer'); } }
       function downloadFile(url){ const a=document.createElement('a'); a.href=url; a.download=''; document.body.appendChild(a); a.click(); a.remove(); }

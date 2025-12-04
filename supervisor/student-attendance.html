@@ -72,7 +72,7 @@
       </div>
     </nav>
     <script>
-      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       async function ensureAuth() { const r = await fetch('/api/me', { headers: authHeaders() }); if (!r.ok) { window.location.replace('/index.html'); throw new Error('auth'); } return r.json(); }
       function fmtWhen(ts) { return new Date(ts).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' }); }
       function getParam(name){ const u = new URL(window.location.href); return u.searchParams.get(name); }

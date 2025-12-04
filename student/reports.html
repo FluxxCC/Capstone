@@ -99,7 +99,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/config.js"></script>
     <script>
-      function authHeaders(json=false){ const t=sessionStorage.getItem('userToken'); const h=t?{ Authorization:'Bearer '+t }:{}; return json?{ 'Content-Type':'application/json', ...h }:h; }
+      function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       let files = [];
       let busy = false;
       let currentDraftId = '';

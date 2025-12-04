@@ -11,7 +11,7 @@
   <body>
     <div id="root"></div>
     <script>
-      function authHeaders(){ const t = sessionStorage.getItem('userToken'); return t ? { Authorization: 'Bearer ' + t } : {}; }
+      function authHeaders(){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); return t ? { Authorization: 'Bearer ' + t } : {}; }
       async function getMe(){ const r = await fetch('/api/me', { headers: authHeaders() }); const j = await r.json().catch(()=>({})); if(!r.ok){ window.location.replace('/index.html'); throw new Error('auth'); } return j; }
       function Page(){
         const [courses, setCourses] = React.useState([]);

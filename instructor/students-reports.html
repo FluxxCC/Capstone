@@ -45,7 +45,7 @@
       </div>
     </nav>
     <script>
-      function authHeaders(json){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       document.addEventListener('DOMContentLoaded', async function(){
         const list = document.getElementById('studentsList');
         const search = document.getElementById('searchInput');

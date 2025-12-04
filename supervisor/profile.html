@@ -43,7 +43,7 @@
       </div>
     </nav>
     <script>
-      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       document.addEventListener('DOMContentLoaded', async function(){
         try {
           const meR = await fetch('/api/me', { headers: authHeaders() });
@@ -62,8 +62,8 @@
         } catch {}
         document.getElementById('logoutBtn').addEventListener('click', async function(){
           try { await fetch('/api/logout', { method: 'POST' }); } catch {}
-          try { sessionStorage.removeItem('selectedRole'); sessionStorage.removeItem('userAuth'); } catch {}
-          try { sessionStorage.removeItem('userToken'); } catch {}
+          try { sessionStorage.removeItem('selectedRole'); sessionStorage.removeItem('userAuth'); sessionStorage.removeItem('userToken'); sessionStorage.removeItem('role'); } catch {}
+          try { localStorage.removeItem('selectedRole'); localStorage.removeItem('userAuth'); localStorage.removeItem('userToken'); localStorage.removeItem('role'); } catch {}
           window.location.href = '/';
         });
       });

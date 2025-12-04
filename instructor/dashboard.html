@@ -64,7 +64,7 @@
     </nav>
 
     <script>
-      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       function getLastName(n){ const p = String(n || '').trim().split(/\s+/); return p.length ? p[p.length-1] : ''; }
       document.addEventListener('DOMContentLoaded', async function(){
         try {

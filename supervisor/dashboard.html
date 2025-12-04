@@ -50,7 +50,7 @@
       </div>
     </nav>
     <script>
-      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       async function ensureAuth() { const r = await fetch('/api/me', { headers: authHeaders(), cache: 'no-store' }); if (!r.ok) { window.location.replace('/index.html'); throw new Error('auth'); } return r.json(); }
       function getLastName(full) { const p = String(full||'').trim().split(/\s+/); return p.length ? p[p.length-1] : full || ''; }
       document.addEventListener('DOMContentLoaded', async function() {

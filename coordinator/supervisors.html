@@ -11,7 +11,7 @@
   <body>
     <main id="root"><div class="container" style="width:min(92vw,560px);margin:2rem auto;padding:1rem;border:2px solid #d1d5db;border-radius:10px;background:#fff;text-align:center;font-weight:700;">Loading Supervisors…</div></main>
     <script>
-      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       async function getMe() { const r = await fetch('/api/me', { headers: authHeaders() }); const j = await r.json().catch(() => ({})); if (!r.ok) { window.location.replace('/index.html'); throw new Error('auth'); } return j; }
       function Page() {
         const [course, setCourse] = React.useState('');

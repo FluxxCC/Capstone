@@ -38,7 +38,7 @@
         const [editing, setEditing] = React.useState(null);
         const [toDelete, setToDelete] = React.useState(null);
 
-        function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+        function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
         async function ensureAdmin() {
           try {
             const r = await fetch('/api/me', { headers: authHeaders() });
@@ -234,7 +234,7 @@
           const idNumber = props.idNumber;
           const [codes, setCodes] = React.useState([]);
           const [options, setOptions] = React.useState([]);
-          function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+          function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
           React.useEffect(()=>{ (async()=>{ try { const rc = await fetch('/api/sections/catalog', { headers: authHeaders() }); const jc = await rc.json(); const opts = (rc.ok && jc.ok && Array.isArray(jc.data)) ? jc.data.map(s=>s.code) : []; setOptions(opts); } catch {} try { const r = await fetch(`/api/instructor/${encodeURIComponent(idNumber)}/sections`, { headers: authHeaders() }); const j = await r.json(); const arr = (r.ok && j.ok && Array.isArray(j.data)) ? j.data.map(s=>s.code) : []; setCodes(arr); } catch {} })(); }, [idNumber]);
           return React.createElement(CustomSelect, { name: 'sections', multiple: true, placeholder: 'Assign Course & Section(s)', options: options, defaultValue: codes, required: true });
         }
@@ -242,7 +242,7 @@
         function SectionsChooser(props){
           const name = 'sections';
           const [options, setOptions] = React.useState([]);
-          function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+          function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
           React.useEffect(()=>{ (async()=>{ try { const r0 = await fetch('/api/sections/catalog', { headers: authHeaders() }); const j0 = await r0.json(); const opts = (r0.ok && j0.ok && Array.isArray(j0.data)) ? j0.data.map(s=>s.code) : []; setOptions(opts); } catch {} })(); }, []);
           return React.createElement(CustomSelect, { name, multiple: true, placeholder: 'Assign Course & Section(s)', options: options, required: true });
         }

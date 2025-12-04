@@ -301,7 +301,7 @@
       </div>
     </nav>
     <script>
-      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       async function ensureAuth() { const r = await fetch('/api/me', { headers: authHeaders() }); if (!r.ok) { window.location.replace('/index.html'); throw new Error('auth'); } return r.json(); }
       function getParam(name){ const u=new URL(window.location.href); return u.searchParams.get(name); }
       function initInputs(){ const bodies = Array.from(document.querySelectorAll('table tbody')); bodies.forEach(tb => { Array.from(tb.querySelectorAll('tr')).forEach(tr => { const cells = tr.querySelectorAll('td'); if (cells && cells.length >= 3) { const inp = document.createElement('input'); inp.type='number'; inp.min='0'; inp.max='100'; inp.step='1'; inp.placeholder='0-100'; inp.className='input'; inp.style.width='100%'; cells[2].innerHTML=''; cells[2].appendChild(inp); } }); }); }

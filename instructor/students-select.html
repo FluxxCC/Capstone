@@ -36,7 +36,7 @@
       </div>
     </nav>
     <script>
-      function authHeaders(){ const t = sessionStorage.getItem('userToken'); return t ? { Authorization: 'Bearer ' + t } : {}; }
+      function authHeaders(){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); return t ? { Authorization: 'Bearer ' + t } : {}; }
       document.addEventListener('DOMContentLoaded', async function(){
         const box = document.getElementById('contentBox');
         box.innerHTML = '<div class="skeleton-card"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line" style="width:40%;margin-top:8px"></div></div>';

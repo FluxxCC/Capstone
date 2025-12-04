@@ -56,7 +56,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/config.js"></script>
     <script>
-      function authHeaders(json){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       function fmtWhen(ts){ const d = new Date(Number(ts||Date.now())); const date = d.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' }); const time = d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' }); return date + ' at ' + time; }
       document.addEventListener('DOMContentLoaded', async function(){
         const textBox = document.getElementById('textLogs');

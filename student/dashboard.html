@@ -52,7 +52,7 @@
       </div>
     </nav>
     <script>
-      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       document.addEventListener('DOMContentLoaded', async function() {
         const box = document.getElementById('recentBox');
         box.innerHTML = '<div>Loading…</div>';

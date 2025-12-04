@@ -29,8 +29,21 @@
     <script>
       function Dashboard() {
         function logout() {
-          sessionStorage.removeItem('superAdminAuth');
-          try { sessionStorage.removeItem('userToken'); } catch {}
+          fetch('/api/logout', { method: 'POST' }).catch(()=>{});
+          try {
+            sessionStorage.removeItem('superAdminAuth');
+            sessionStorage.removeItem('selectedRole');
+            sessionStorage.removeItem('userAuth');
+            sessionStorage.removeItem('userToken');
+            sessionStorage.removeItem('role');
+          } catch {}
+          try {
+            localStorage.removeItem('superAdminAuth');
+            localStorage.removeItem('selectedRole');
+            localStorage.removeItem('userAuth');
+            localStorage.removeItem('userToken');
+            localStorage.removeItem('role');
+          } catch {}
           window.location.href = '/';
         }
 

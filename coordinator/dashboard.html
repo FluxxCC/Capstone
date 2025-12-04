@@ -17,7 +17,7 @@
   <body>
     <div id="root"></div>
     <script>
-      function authHeaders(json=false){ const t = sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
+      function authHeaders(json=false){ const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken'); const h = t ? { Authorization: 'Bearer ' + t } : {}; return json ? { 'Content-Type': 'application/json', ...h } : h; }
       async function getMe() { const r = await fetch('/api/me', { headers: authHeaders() }); if (!r.ok) { window.location.replace('/index.html'); throw new Error('auth'); } return r.json(); }
       function Dashboard() {
         const [courses, setCourses] = React.useState([]);
@@ -26,7 +26,7 @@
         function hrefUsers() { return `/coordinator/users.html`; }
         function logout() {
           fetch('/api/logout', { method: 'POST' }).catch(()=>{});
-          try { sessionStorage.removeItem('selectedRole'); sessionStorage.removeItem('userAuth'); sessionStorage.removeItem('userToken'); } catch {}
+          try { sessionStorage.removeItem('selectedRole'); sessionStorage.removeItem('userAuth'); sessionStorage.removeItem('userToken'); localStorage.removeItem('selectedRole'); localStorage.removeItem('userAuth'); localStorage.removeItem('userToken'); localStorage.removeItem('role'); sessionStorage.removeItem('role'); } catch {}
           window.location.href = '/';
         }
         return React.createElement('main', { className: 'container centered' }, [

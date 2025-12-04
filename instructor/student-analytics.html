@@ -61,7 +61,7 @@
     </nav>
     <script>
       function qs(k){ try{ return new URLSearchParams(window.location.search).get(k) || '' }catch{ return '' } }
-      function authHeaders(json){ const u = sessionStorage.getItem('userToken') || localStorage.getItem('userToken') || ''; const h = {}; if (u) h['Authorization'] = 'Bearer '+u; if (json) h['Content-Type'] = 'application/json'; return h; }
+      function authHeaders(json){ const u = localStorage.getItem('userToken') || sessionStorage.getItem('userToken') || ''; const h = {}; if (u) h['Authorization'] = 'Bearer '+u; if (json) h['Content-Type'] = 'application/json'; return h; }
       const id = qs('id');
       const back = document.getElementById('back');
       if (back) back.addEventListener('click', function(e){ e.preventDefault(); window.location.href = '/instructor/student-detail.html?id='+encodeURIComponent(id)+'&view=attendance'; });

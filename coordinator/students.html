@@ -32,7 +32,7 @@
         React.useEffect(() => { (async()=>{ try { const j = await getMe(); setCourse(String(j.data?.course || '')); } catch {} })(); const params = new URLSearchParams(window.location.search); const c = String(params.get('course')||'').trim(); if (c) { setFilterCourse(c); setFilterSection(''); setHasCourseParam(true); } }, []);
 
         function authHeaders(json=false){
-          const t = sessionStorage.getItem('userToken');
+          const t = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
           const h = t ? { Authorization: 'Bearer ' + t } : {};
           return json ? { 'Content-Type': 'application/json', ...h } : h;
         }
